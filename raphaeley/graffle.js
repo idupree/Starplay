@@ -44,21 +44,25 @@ function prettyConnectingPathBetweenShapes(obj1, obj2) {
 }
 
 
-Raphael.fn.connection = function (obj1, obj2, line, bg) {
-    if (obj1.line && obj1.from && obj1.to) {
-        line = obj1;
-        obj1 = line.from;
-        obj2 = line.to;
+Raphael.fn.connection = function (obj1, obj2, fgcolor, bgcolor) {
+    var precomputed;
+    if (obj1.fgline && obj1.from && obj1.to) {
+        precomputed = obj1;
+        obj1 = precomputed.from;
+        obj2 = precomputed.to;
     }
     var path = prettyConnectingPathBetweenShapes(obj1, obj2);
-    if (line && line.line) {
-        line.bg && line.bg.attr({path: path});
-        line.line.attr({path: path});
+    if (precomputed) {
+        precomputed.bgline && precomputed.bgline.attr({path: path});
+        precomputed.fgline.attr({path: path});
     } else {
-        var color = typeof line == "string" ? line : "#000";
+        fgcolor = typeof fgcolor == "string" ? fgcolor : "#000";
         return {
-            bg: bg && bg.split && this.path(path).attr({stroke: bg.split("|")[0], fill: "none", "stroke-width": bg.split("|")[1] || 3}),
-            line: this.path(path).attr({stroke: color, fill: "none"}),
+            bgline: bgcolor && bgcolor.split && this.path(path).attr({
+                        stroke: bgcolor.split("|")[0],
+                        fill: "none",
+                        "stroke-width": bgcolor.split("|")[1] || 3}),
+            fgline: this.path(path).attr({stroke: fgcolor, fill: "none"}),
             from: obj1,
             to: obj2
         };
