@@ -1,4 +1,7 @@
 
+(function() {
+
+
 function prettyConnectingPathBetweenShapes(obj1, obj2) {
     var bb1 = obj1.getBBox(),
         bb2 = obj2.getBBox(),
@@ -96,3 +99,6 @@ window.onload = function () {
     connections.push(r.connection(shapes[1], shapes[2], "#fff", "#fff|5"));
     connections.push(r.connection(shapes[1], shapes[3], "#000", "#fff"));
 };
+
+}());
+
