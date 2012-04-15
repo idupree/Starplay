@@ -243,20 +243,11 @@ global.turtleDaemons =
 	activateGun: -> @type == 'crazy' and global.time % 8 == 0
 	wobble: -> @type == 'crazy'
 	layGrass: -> true
-###
-#hmm, diffusion could be faster and less asymmetric if
-#implemented as a thing. Or. Random order. Or..hm.
-"Rate is the percent of the chemical in a given square
-that is split evenly among the square itself and each of its neighbors."
-global.patchFn.diffuse4 = (chemicalName, rate) ->
-	amountHere = +@[chemicalName]
-	spreadAmount = amountHere * rate
-	eachGets = spreadAmount / 5
-	@x + 1
-	transfer = (patch1, patch2) ->
-		#patch1.grass - patch2.grass
-		patch1.grass / 10 / (4+1)
-###
+
+#global.patchFn.diffuse4 = (chemicalName, rate) ->
+#	amountHere = +@[chemicalName]
+#	spreadAmount = amountHere * rate
+#	eachGets = spreadAmount / 5
 diffuseGrass = ->
 	transfer = (patch1, patch2) ->
 		patch1.grass / 10 / (4+1)
