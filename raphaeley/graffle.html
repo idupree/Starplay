@@ -20,11 +20,76 @@
             p {
                 text-align: center;
             }
+            canvas, p.script {
+                display: inline-block;
+            }
+            p.script, p#compileDebug { white-space: pre; text-align: left; }
+            #error { color: red; }
         </style>
     </head>
     <body>
 	<canvas id="gameCanvas"></canvas>
-	<p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span></p>
+	<p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
+
+<p class="script">
+tau = global.tau
+modulo = global.modulo
+#custom-stuff.
+#Constants can be slider variables.
+global.turtles = [_.extend(global.newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
+patchcolor = ->
+	'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
+global.patches = ((_.extend(global.newPatch(), {color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}) for y in [0...20]) for x in [0...20])
+global.patches.width = global.patches.length
+global.patches.height = global.patches[0].length
+global.patches.each = (callback) ->
+	for col, x in @
+		for patch, y in col
+			callback(patch, x, y)
+global.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'
+global.turtleFn.speed = -> @forward 1
+global.turtleFn.wobble = ->
+	@rotateLeft tau / 16 * (Math.random() - 0.5)
+	@forward 0.25
+global.turtleFn.patchHere = -> global.patches[Math.floor(@x)][Math.floor(@y)]
+global.turtleFn.layGrass = ->
+	@patchHere().grass += 5
+
+global.turtleDaemons =
+	speed: -> @type == 'bullet'
+	activateGun: -> @type == 'crazy' and global.time % 8 == 0
+	wobble: -> @type == 'crazy'
+	layGrass: -> true
+
+#global.patchFn.diffuse4 = (chemicalName, rate) ->
+#	amountHere = +@[chemicalName]
+#	spreadAmount = amountHere * rate
+#	eachGets = spreadAmount / 5
+diffuseGrass = ->
+	transfer = (patch1, patch2) ->
+		patch1.grass / 10 / (4+1)
+	global.patches.each (patch1, x, y) ->
+		for patch2 in [ global.patches[modulo x+1, global.patches.width ][y] ,
+				global.patches[x][modulo y+1, global.patches.height] ]
+			deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
+			patch1['delta:grass'] += deltaHere
+			patch2['delta:grass'] -= deltaHere
+	global.patches.each (patch, x, y) ->
+		patch.grass += patch['delta:grass']
+		patch['delta:grass'] = 0
+
+decayGrass = ->
+	global.patches.each (patch, x, y) ->
+		patch.grass *= 0.99
+
+global.globalDaemons =
+	diffuseGrass: diffuseGrass
+	decayGrass: decayGrass
+#global.patchF
+
+</p>
+<hr />
+<p id="compileDebug"></p>
 <!--        <p>Drag shapes around.</p>
         <div id="holder"></div>
         <p id="copy">Demo of <a href="http://raphaeljs.com/">Raphaël</a>—JavaScript Vector Library</p>-->

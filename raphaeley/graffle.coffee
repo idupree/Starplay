@@ -180,15 +180,15 @@ window.onload = function () {
 `
 ###
 
-tau = 6.28318530717958647692528676655900576839433879875021
 global = {}
-modulo = (num, mod) ->
+tau = global.tau = 6.28318530717958647692528676655900576839433879875021
+modulo = global.modulo = (num, mod) ->
 	result = num % mod
 	result += mod if result < 0
 	result
 global.turtleFn =
 	clone: (mods = {}) ->
-		baby = _.extend(newTurtle(), @, mods)
+		baby = _.extend(global.newTurtle(), @, mods)
 		global.turtles.push baby
 		baby
 	#...maybe have turtle-sets like jquery-sets ?
@@ -208,70 +208,18 @@ global.turtleDaemons = {}
 global.patchFn = {}
 global.patchDaemons = {}
 
-newTurtle = (->
+global.newTurtle = (->
 	Turtle = ->
 	Turtle.prototype = global.turtleFn
 	-> new Turtle()
 	)()
-newPatch = (->
+global.newPatch = (->
 	Patch = ->
 	Patch.prototype = global.patchFn
 	-> new Patch()
 	)()
 global.time = 0 #time not turn because turn sounds like rotation
 
-#custom-stuff.
-#Constants can be slider variables.
-global.turtles = [_.extend(newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
-patchcolor = ->
-	'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-global.patches = ((_.extend(newPatch(), {color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}) for y in [0...20]) for x in [0...20])
-global.patches.width = global.patches.length
-global.patches.height = global.patches[0].length
-global.patches.each = (callback) ->
-	for col, x in @
-		for patch, y in col
-			callback(patch, x, y)
-global.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'
-global.turtleFn.speed = -> @forward 1
-global.turtleFn.wobble = ->
-	@rotateLeft tau / 16 * (Math.random() - 0.5)
-	@forward 0.25
-global.turtleFn.patchHere = -> global.patches[Math.floor(@x)][Math.floor(@y)]
-global.turtleFn.layGrass = ->
-	@patchHere().grass += 5
-
-global.turtleDaemons =
-	speed: -> @type == 'bullet'
-	activateGun: -> @type == 'crazy' and global.time % 8 == 0
-	wobble: -> @type == 'crazy'
-	layGrass: -> true
-
-#global.patchFn.diffuse4 = (chemicalName, rate) ->
-#	amountHere = +@[chemicalName]
-#	spreadAmount = amountHere * rate
-#	eachGets = spreadAmount / 5
-diffuseGrass = ->
-	transfer = (patch1, patch2) ->
-		patch1.grass / 10 / (4+1)
-	global.patches.each (patch1, x, y) ->
-		for patch2 in [ global.patches[modulo x+1, global.patches.width ][y] ,
-				global.patches[x][modulo y+1, global.patches.height] ]
-			deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
-			patch1['delta:grass'] += deltaHere
-			patch2['delta:grass'] -= deltaHere
-	global.patches.each (patch, x, y) ->
-		patch.grass += patch['delta:grass']
-		patch['delta:grass'] = 0
-
-decayGrass = ->
-	global.patches.each (patch, x, y) ->
-		patch.grass *= 0.99
-
-global.globalDaemons =
-	diffuseGrass: diffuseGrass
-	decayGrass: decayGrass
-#global.patchF
 
 simATurn = (global) ->
 	for own fnName, condition of global.turtleDaemons
@@ -336,6 +284,16 @@ $ ->
 	canvas = $('#gameCanvas')[0]
 	canvas.width = 600
 	canvas.height = 600
+	try
+		codeInCoffee = $('.script').text()
+		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
+			#bare because "new Function()" will make it non-bare anyway
+		$('#compileDebug').text(codeInJS)
+		code = new Function("global", codeInJS)
+		$('#compileDebug').text(code+"")
+		code(global)
+	catch error
+		$('#error').text("Error " + error.message)
 	#setInterval((-> eachTurn global, canvas), 1000)
 	go = ->
 		eachTurn global, canvas
