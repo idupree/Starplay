@@ -280,10 +280,7 @@ eachTurn = (global, canvas) ->
 #	setTimeout(daemon, 1000)
 #and just pretend it won't take too long to simulate..
 
-$ ->
-	canvas = $('#gameCanvas')[0]
-	canvas.width = 600
-	canvas.height = 600
+compileCodeOnPage = ->
 	try
 		codeInCoffee = $('.script').text()
 		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
@@ -294,16 +291,49 @@ $ ->
 		fns = code global
 		global.initState = fns.initState
 		global.initDaemons = fns.initDaemons
-		global.initState()
-		global.initDaemons()
+		return true
 	catch error
 		console.log error, error.message, error.stack if console and console.log
 		$('#error').text("Error " + error.message)
-	#setInterval((-> eachTurn global, canvas), 1000)
-	go = ->
-		eachTurn global, canvas
-		setTimeout(go, 250) #if global.time < 30*4
-	go()
+		return false
+
+startRunning = (global, canvas) ->
+	global.isRunning = true
+	if not global.runningTimer
+		go = ->
+			eachTurn global, canvas
+			global.runningTimer = setTimeout(go, 250)
+		go()
+
+stopRunning = ->
+	global.isRunning = false
+	if global.runningTimer
+		clearTimeout global.runningTimer
+		global.runningTimer = null
+
+$ ->
+	canvas = $('#gameCanvas')[0]
+	canvas.width = 600
+	canvas.height = 600
+	compileCodeOnPage()
+	global.initState()
+	global.initDaemons()
+	#TODO Should this code clear turtles/patches/turtleFn/etc? or rely on their code to do it or.
+	$('#restart').click ->
+		global.initState()
+		global.initDaemons()
+		startRunning global, canvas # ?
+	$('#reload').click ->
+		if compileCodeOnPage()
+			global.initState()
+			global.initDaemons()
+			startRunning global, canvas # ?
+	$('#redaemon').click ->
+		if compileCodeOnPage()
+			global.initDaemons()
+	$('#pause_resume').click ->
+		if global.isRunning then stopRunning() else startRunning global, canvas
+	startRunning global, canvas
 
 	#http://jng.imagine27.com/articles/2011-10-02-171602_overtone.html
 ###
