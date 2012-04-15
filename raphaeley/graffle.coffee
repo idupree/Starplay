@@ -291,7 +291,11 @@ $ ->
 		$('#compileDebug').text(codeInJS)
 		code = new Function("global", codeInJS)
 		$('#compileDebug').text(code+"")
-		code(global)
+		fns = code global
+		global.initState = fns.initState
+		global.initDaemons = fns.initDaemons
+		global.initState()
+		global.initDaemons()
 	catch error
 		console.log error, error.message, error.stack if console and console.log
 		$('#error').text("Error " + error.message)
