@@ -220,7 +220,9 @@ newPatch = (->
 	)()
 global.time = 0 #time not turn because turn sounds like rotation
 global.turtles = [_.extend(newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
-global.patches = ((_.extend(newPatch(), {color:'white', x:x, y:y}) for y in [0...20]) for x in [0...20])
+patchcolor = ->
+	'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
+global.patches = ((_.extend(newPatch(), {color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}) for y in [0...20]) for x in [0...20])
 global.patches.width = global.patches.length
 global.patches.height = global.patches[0].length
 global.patches.each = (callback) ->
@@ -232,12 +234,46 @@ global.turtleFn.speed = -> @forward 1
 global.turtleFn.wobble = ->
 	@rotateLeft tau / 16 * (Math.random() - 0.5)
 	@forward 0.25
+global.turtleFn.patchHere = -> global.patches[Math.floor(@x)][Math.floor(@y)]
+global.turtleFn.layGrass = ->
+	@patchHere().grass += 5
 
 global.turtleDaemons =
 	speed: -> @type == 'bullet'
 	activateGun: -> @type == 'crazy' and global.time % 8 == 0
 	wobble: -> @type == 'crazy'
+	layGrass: -> true
+###
+#hmm, diffusion could be faster and less asymmetric if
+#implemented as a thing. Or. Random order. Or..hm.
+"Rate is the percent of the chemical in a given square
+that is split evenly among the square itself and each of its neighbors."
+global.patchFn.diffuse4 = (chemicalName, rate) ->
+	amountHere = +@[chemicalName]
+	spreadAmount = amountHere * rate
+	eachGets = spreadAmount / 5
+	@x + 1
+	transfer = (patch1, patch2) ->
+		#patch1.grass - patch2.grass
+		patch1.grass / 10 / (4+1)
+###
+diffuseGrass = ->
+	transfer = (patch1, patch2) ->
+		patch1.grass / 10 / (4+1)
+	global.patches.each (patch1, x, y) ->
+		for patch2 in [ global.patches[modulo x+1, global.patches.width ][y] ,
+				global.patches[x][modulo y+1, global.patches.height] ]
+			deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
+			patch1['delta:grass'] += deltaHere
+			patch2['delta:grass'] -= deltaHere
+	global.patches.each (patch, x, y) ->
+		patch.grass += patch['delta:grass']
+		patch['delta:grass'] = 0
 
+decayGrass = ->
+	global.patches.each (patch, x, y) ->
+		patch.grass *= 0.99
+#global.patchF
 
 simATurn = (global) ->
 	for own fnName, condition of global.turtleDaemons
@@ -250,7 +286,8 @@ simATurn = (global) ->
 		global.patches.each (patch) ->
 			if condition.apply(patch)
 				fn.apply(patch)
-			
+	diffuseGrass()
+	decayGrass()
 	global.time += 1
 	return
 
