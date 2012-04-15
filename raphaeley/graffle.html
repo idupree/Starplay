@@ -20,8 +20,12 @@
             p {
                 text-align: center;
             }
-            canvas, p.script {
+            canvas, #buttons {
                 display: inline-block;
+                vertical-align: middle;
+            }
+            #buttons > button {
+                display: block;
             }
             p.script, p#compileDebug { white-space: pre; text-align: left; }
             #error { color: red; }
@@ -29,9 +33,15 @@
     </head>
     <body>
 	<canvas id="gameCanvas"></canvas>
+	<div id="buttons">
+	<button id="restart">Restart without recompiling</button>
+	<button id="reload">Restart fully</button>
+	<button id="redaemon">Reload daemons</button>
+	<button id="pause_resume">Pause/Resume</button>
+	</div>
 	<p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
 
-<p class="script">
+<p class="script" contentEditable="true">
 tau = global.tau
 modulo = global.modulo
 #custom-stuff.
