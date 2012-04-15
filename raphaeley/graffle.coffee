@@ -293,6 +293,7 @@ $ ->
 		$('#compileDebug').text(code+"")
 		code(global)
 	catch error
+		console.log error, error.message, error.stack if console and console.log
 		$('#error').text("Error " + error.message)
 	#setInterval((-> eachTurn global, canvas), 1000)
 	go = ->
