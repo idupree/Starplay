@@ -204,14 +204,23 @@ global.turtleFn =
 		@
 
 global.turtleDaemons = {}
+
+global.patchFn = {}
+global.patchDaemons = {}
+
 newTurtle = (->
 	Turtle = ->
 	Turtle.prototype = global.turtleFn
 	-> new Turtle()
 	)()
+newPatch = (->
+	Patch = ->
+	Patch.prototype = global.patchFn
+	-> new Patch()
+	)()
 global.time = 0 #time not turn because turn sounds like rotation
 global.turtles = [_.extend(newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
-global.patches = (({color:'white'} for y in [0...20]) for x in [0...20])
+global.patches = ((_.extend(newPatch(), {color:'white', x:x, y:y}) for y in [0...20]) for x in [0...20])
 global.patches.width = global.patches.length
 global.patches.height = global.patches[0].length
 global.patches.each = (callback) ->
@@ -236,6 +245,12 @@ simATurn = (global) ->
 		for turtle in global.turtles
 			if condition.apply(turtle)
 				fn.apply(turtle)
+	for own fnName, condition of global.patchDaemons
+		fn = global.patchFn
+		global.patches.each (patch) ->
+			if condition.apply(patch)
+				fn.apply(patch)
+			
 	global.time += 1
 	return
 
