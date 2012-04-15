@@ -219,6 +219,9 @@ newPatch = (->
 	-> new Patch()
 	)()
 global.time = 0 #time not turn because turn sounds like rotation
+
+#custom-stuff.
+#Constants can be slider variables.
 global.turtles = [_.extend(newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
 patchcolor = ->
 	'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
