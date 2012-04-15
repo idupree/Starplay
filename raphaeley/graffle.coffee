@@ -267,11 +267,11 @@ renderToCanvas = (global, canvas) ->
 	ctx.scale(canvas.width / global.patches.width, canvas.height / global.patches.height)
 
 	global.patches.each (patch, x, y) ->
-		ctx.fillStyle = patch.color
+		ctx.fillStyle = if typeof patch.color == 'function' then patch.color() else patch.color
 		ctx.fillRect(x, y, 0.95, 0.95)
 	
 	for turtle in global.turtles
-		ctx.fillStyle = turtle.color
+		ctx.fillStyle = if typeof turtle.color == 'function' then turtle.color() else turtle.color
 		ctx.save()
 		ctx.translate(turtle.x, turtle.y)
 		ctx.rotate(turtle.heading)
