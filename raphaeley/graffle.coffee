@@ -273,6 +273,10 @@ diffuseGrass = ->
 decayGrass = ->
 	global.patches.each (patch, x, y) ->
 		patch.grass *= 0.99
+
+global.globalDaemons =
+	diffuseGrass: diffuseGrass
+	decayGrass: decayGrass
 #global.patchF
 
 simATurn = (global) ->
@@ -286,8 +290,8 @@ simATurn = (global) ->
 		global.patches.each (patch) ->
 			if condition.apply(patch)
 				fn.apply(patch)
-	diffuseGrass()
-	decayGrass()
+	for own fnName, fn of global.globalDaemons
+		fn()
 	global.time += 1
 	return
 
