@@ -214,6 +214,10 @@ global.turtles = [_.extend(newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:
 global.patches = (({color:'white'} for y in [0...20]) for x in [0...20])
 global.patches.width = global.patches.length
 global.patches.height = global.patches[0].length
+global.patches.each = (callback) ->
+	for col, x in @
+		for patch, y in col
+			callback(patch, x, y)
 global.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'
 global.turtleFn.speed = -> @forward 1
 global.turtleFn.wobble = ->
@@ -247,10 +251,9 @@ renderToCanvas = (global, canvas) ->
 #	ctx.scale(canvas.width / grid.width, canvas.height / grid.height)
 	ctx.scale(canvas.width / global.patches.width, canvas.height / global.patches.height)
 
-	for col, x in global.patches
-		for patch, y in col
-			ctx.fillStyle = patch.color
-			ctx.fillRect(x, y, 0.95, 0.95)
+	global.patches.each (patch, x, y) ->
+		ctx.fillStyle = patch.color
+		ctx.fillRect(x, y, 0.95, 0.95)
 	
 	for turtle in global.turtles
 		ctx.fillStyle = turtle.color
