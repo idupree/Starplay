@@ -20,26 +20,28 @@
             p {
                 text-align: center;
             }
-            canvas, #buttons {
-                display: inline-block;
-                vertical-align: middle;
+            canvas {
+                float: left;
             }
             #buttons > button {
                 display: block;
+                margin-left: auto;
+                margin-right: auto;
             }
             p.script, p#compileDebug { white-space: pre; text-align: left; }
+            #compileDebug, hr { display: none; } /* it didn't have enough newlines in Firefox, & not important right now */
             #error { color: red; }
         </style>
     </head>
     <body>
 	<canvas id="gameCanvas"></canvas>
+	<p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
 	<div id="buttons">
 	<button id="restart">Restart (no recompile)</button>
 	<button id="reload">Restart (recompile)</button>
 	<button id="redaemon">Reload daemons (recompile)</button>
 	<button id="pause_resume">Pause/Resume</button>
 	</div>
-	<p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
 
 <p class="script" contentEditable="true">
 tau = global.tau
