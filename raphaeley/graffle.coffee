@@ -64,7 +64,8 @@ guiState =
 	isRunning: false
 	runningTimer: null
 
-renderToCanvas = (sim, canvas) ->
+renderToCanvas = ->
+	canvas = guiState.canvas
 	ctx = canvas.getContext('2d')
 	width = canvas.width
 	height = canvas.height
@@ -93,9 +94,9 @@ renderToCanvas = (sim, canvas) ->
 	ctx.restore()
 
 
-eachTurn = (sim, canvas) ->
+eachTurn = ->
 	simATurn sim
-	renderToCanvas sim, canvas
+	renderToCanvas()
 	$('#turn').text(sim.time)
 	$('#turtles').text(sim.turtles.length)
 
@@ -117,11 +118,11 @@ compileCodeOnPage = ->
 		$('#error').text("Error " + error.message)
 		return false
 
-startRunning = (sim, canvas) ->
+startRunning = ->
 	guiState.isRunning = true
 	if not guiState.runningTimer
 		go = ->
-			eachTurn sim, canvas
+			eachTurn()
 			guiState.runningTimer = setTimeout(go, 250)
 		go()
 
@@ -142,16 +143,16 @@ $ ->
 	$('#restart').click ->
 		sim.initState()
 		sim.initDaemons()
-		startRunning sim, canvas # ?
+		startRunning() # ?
 	$('#reload').click ->
 		if compileCodeOnPage()
 			sim.initState()
 			sim.initDaemons()
-			startRunning sim, canvas # ?
+			startRunning() # ?
 	$('#redaemon').click ->
 		if compileCodeOnPage()
 			sim.initDaemons()
 	$('#pause_resume').click ->
-		if guiState.isRunning then stopRunning() else startRunning sim, canvas
-	startRunning sim, canvas
+		if guiState.isRunning then stopRunning() else startRunning()
+	startRunning()
 
