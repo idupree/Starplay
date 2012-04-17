@@ -266,3 +266,8 @@ just turtleFn > each turtle, and also 'global' in scope. and 'turn' maybz..but i
 <!--        <p>Drag shapes around.</p>
         <div id="holder"></div>
         <p id="copy">Demo of <a href="http://raphaeljs.com/">Raphaël</a>—JavaScript Vector Library</p>-->
+
+
+
+transparent code/IDEish/etc over game-display?  code over it even?
+clickability?
