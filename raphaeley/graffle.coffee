@@ -1,20 +1,20 @@
 
 
-global = {}
+sim = {}
 tau = 6.28318530717958647692528676655900576839433879875021
 modulo = (num, mod) ->
 	result = num % mod
 	result += mod if result < 0
 	result
-global.turtleFn =
+sim.turtleFn =
 	clone: (mods = {}) ->
-		baby = _.extend(global.newTurtle(), @, mods)
-		global.turtles.push baby
+		baby = _.extend(sim.newTurtle(), @, mods)
+		sim.turtles.push baby
 		baby
 	#...maybe have turtle-sets like jquery-sets ?
 	forward: (dist = 1) ->
-		@x = modulo (@x + dist * Math.cos @heading), global.patches.width
-		@y = modulo (@y + dist * Math.sin @heading), global.patches.height
+		@x = modulo (@x + dist * Math.cos @heading), sim.patches.width
+		@y = modulo (@y + dist * Math.sin @heading), sim.patches.height
 		@
 	rotateLeft: (amount = tau / 4) ->
 		@heading = modulo (@heading + amount), tau
@@ -23,43 +23,43 @@ global.turtleFn =
 		@heading = modulo (@heading - amount), tau
 		@
 
-global.turtleDaemons = {}
+sim.turtleDaemons = {}
 
-global.patchFn = {}
-global.patchDaemons = {}
+sim.patchFn = {}
+sim.patchDaemons = {}
 
-global.newTurtle = (->
+sim.newTurtle = (->
 	Turtle = ->
-	Turtle.prototype = global.turtleFn
+	Turtle.prototype = sim.turtleFn
 	-> new Turtle()
 	)()
-global.newPatch = (->
+sim.newPatch = (->
 	Patch = ->
-	Patch.prototype = global.patchFn
+	Patch.prototype = sim.patchFn
 	-> new Patch()
 	)()
-global.time = 0 #time not turn because turn sounds like rotation
+sim.time = 0 #time not turn because turn sounds like rotation
 
 
-simATurn = (global) ->
-	for own fnName, condition of global.turtleDaemons
-		fn = global.turtleFn[fnName]
-		for turtle in global.turtles
+simATurn = (sim) ->
+	for own fnName, condition of sim.turtleDaemons
+		fn = sim.turtleFn[fnName]
+		for turtle in sim.turtles
 			if condition.apply(turtle)
 				fn.apply(turtle)
-	for own fnName, condition of global.patchDaemons
-		fn = global.patchFn
-		global.patches.each (patch) ->
+	for own fnName, condition of sim.patchDaemons
+		fn = sim.patchFn
+		sim.patches.each (patch) ->
 			if condition.apply(patch)
 				fn.apply(patch)
-	for own fnName, fn of global.globalDaemons
+	for own fnName, fn of sim.globalDaemons
 		fn()
-	global.time += 1
+	sim.time += 1
 	return
 
 #The rest of the code is UI stuff
 
-renderToCanvas = (global, canvas) ->
+renderToCanvas = (sim, canvas) ->
 	ctx = canvas.getContext('2d')
 	width = canvas.width
 	height = canvas.height
@@ -67,13 +67,13 @@ renderToCanvas = (global, canvas) ->
 
 	ctx.save()
 #	ctx.scale(canvas.width / grid.width, canvas.height / grid.height)
-	ctx.scale(canvas.width / global.patches.width, canvas.height / global.patches.height)
+	ctx.scale(canvas.width / sim.patches.width, canvas.height / sim.patches.height)
 
-	global.patches.each (patch, x, y) ->
+	sim.patches.each (patch, x, y) ->
 		ctx.fillStyle = if typeof patch.color == 'function' then patch.color() else patch.color
 		ctx.fillRect(x, y, 0.95, 0.95)
 	
-	for turtle in global.turtles
+	for turtle in sim.turtles
 		ctx.fillStyle = if typeof turtle.color == 'function' then turtle.color() else turtle.color
 		ctx.save()
 		ctx.translate(turtle.x, turtle.y)
@@ -88,11 +88,11 @@ renderToCanvas = (global, canvas) ->
 	ctx.restore()
 
 
-eachTurn = (global, canvas) ->
-	simATurn global
-	renderToCanvas global, canvas
-	$('#turn').text(global.time)
-	$('#turtles').text(global.turtles.length)
+eachTurn = (sim, canvas) ->
+	simATurn sim
+	renderToCanvas sim, canvas
+	$('#turn').text(sim.time)
+	$('#turtles').text(sim.turtles.length)
 
 #TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
 compileCodeOnPage = ->
@@ -102,51 +102,51 @@ compileCodeOnPage = ->
 		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
 			#bare because "new Function()" will make it non-bare anyway
 		console.log(codeInJS) if console and console.log
-		code = new Function("global", "tau", "modulo", codeInJS)
-		fns = code global, tau, modulo
-		global.initState = fns.initState
-		global.initDaemons = fns.initDaemons
+		code = new Function("sim", "tau", "modulo", codeInJS)
+		fns = code sim, tau, modulo
+		sim.initState = fns.initState
+		sim.initDaemons = fns.initDaemons
 		return true
 	catch error
 		console.log error, error.message, error.stack if console and console.log
 		$('#error').text("Error " + error.message)
 		return false
 
-startRunning = (global, canvas) ->
-	global.isRunning = true
-	if not global.runningTimer
+startRunning = (sim, canvas) ->
+	sim.isRunning = true
+	if not sim.runningTimer
 		go = ->
-			eachTurn global, canvas
-			global.runningTimer = setTimeout(go, 250)
+			eachTurn sim, canvas
+			sim.runningTimer = setTimeout(go, 250)
 		go()
 
 stopRunning = ->
-	global.isRunning = false
-	if global.runningTimer
-		clearTimeout global.runningTimer
-		global.runningTimer = null
+	sim.isRunning = false
+	if sim.runningTimer
+		clearTimeout sim.runningTimer
+		sim.runningTimer = null
 
 $ ->
 	canvas = $('#gameCanvas')[0]
 	canvas.width = 600
 	canvas.height = 600
 	compileCodeOnPage()
-	global.initState()
-	global.initDaemons()
+	sim.initState()
+	sim.initDaemons()
 	#TODO Should this code clear turtles/patches/turtleFn/etc? or rely on their code to do it or.
 	$('#restart').click ->
-		global.initState()
-		global.initDaemons()
-		startRunning global, canvas # ?
+		sim.initState()
+		sim.initDaemons()
+		startRunning sim, canvas # ?
 	$('#reload').click ->
 		if compileCodeOnPage()
-			global.initState()
-			global.initDaemons()
-			startRunning global, canvas # ?
+			sim.initState()
+			sim.initDaemons()
+			startRunning sim, canvas # ?
 	$('#redaemon').click ->
 		if compileCodeOnPage()
-			global.initDaemons()
+			sim.initDaemons()
 	$('#pause_resume').click ->
-		if global.isRunning then stopRunning() else startRunning global, canvas
-	startRunning global, canvas
+		if sim.isRunning then stopRunning() else startRunning sim, canvas
+	startRunning sim, canvas
 
