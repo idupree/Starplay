@@ -1,11 +1,17 @@
 
 
-sim = {}
+# Utility
+
 tau = 6.28318530717958647692528676655900576839433879875021
 modulo = (num, mod) ->
   result = num % mod
   result += mod if result < 0
   result
+
+# Simulation impl
+
+sim = {}
+
 sim.turtleFn =
   clone: (mods = {}) ->
     baby = _.extend(sim.newTurtle(), @, mods)
