@@ -14,7 +14,7 @@ sim = {}
 
 sim.turtleFn =
   clone: (mods = {}) ->
-    baby = _.extend(sim.newTurtle(), @, mods)
+    baby = sim.newTurtle(@, mods)
     sim.turtles.push baby
     baby
   #...maybe have turtle-sets like jquery-sets ?
