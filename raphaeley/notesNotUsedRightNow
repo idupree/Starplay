@@ -271,3 +271,15 @@ just turtleFn > each turtle, and also 'global' in scope. and 'turn' maybz..but i
 
 transparent code/IDEish/etc over game-display?  code over it even?
 clickability?
+
+monospace, 14 ?
+
+  #global.patchFn.diffuse4 = (chemicalName, rate) ->
+  #  amountHere = +@[chemicalName]
+  #  spreadAmount = amountHere * rate
+  #  eachGets = spreadAmount / 5
+
+  #global.patchF
+
+#custom-stuff.
+#Constants can be slider variables.

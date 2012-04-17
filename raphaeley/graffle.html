@@ -53,8 +53,6 @@
 <p class="script" contentEditable="true">
 tau = global.tau
 modulo = global.modulo
-#custom-stuff.
-#Constants can be slider variables.
 
 initState = ->
   global.turtles = [_.extend(global.newTurtle(),
@@ -87,10 +85,6 @@ initDaemons = ->
     wobble: -> @type == 'crazy'
     layGrass: -> true
 
-  #global.patchFn.diffuse4 = (chemicalName, rate) ->
-  #  amountHere = +@[chemicalName]
-  #  spreadAmount = amountHere * rate
-  #  eachGets = spreadAmount / 5
   diffuseGrass = ->
     transfer = (patch1, patch2) ->
       patch1.grass / 10 / (4+1)
@@ -111,7 +105,6 @@ initDaemons = ->
   global.globalDaemons =
     diffuseGrass: diffuseGrass
     decayGrass: decayGrass
-  #global.patchF
 
 return { initState: initState, initDaemons: initDaemons }
 
