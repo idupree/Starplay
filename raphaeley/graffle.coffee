@@ -101,7 +101,7 @@ compileCodeOnPage = ->
 		codeInCoffee = $('.script').text()
 		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
 			#bare because "new Function()" will make it non-bare anyway
-		$('#compileDebug').text(codeInJS)
+		console.log('function(global) {\n' + codeInJS + '\n}\n') if console and console.log
 		code = new Function("global", codeInJS)
 		fns = code global
 		global.initState = fns.initState
