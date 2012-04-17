@@ -59,6 +59,11 @@ simATurn = (sim) ->
 
 #The rest of the code is UI stuff
 
+guiState =
+	canvas: null
+	isRunning: false
+	runningTimer: null
+
 renderToCanvas = (sim, canvas) ->
 	ctx = canvas.getContext('2d')
 	width = canvas.width
@@ -113,21 +118,21 @@ compileCodeOnPage = ->
 		return false
 
 startRunning = (sim, canvas) ->
-	sim.isRunning = true
-	if not sim.runningTimer
+	guiState.isRunning = true
+	if not guiState.runningTimer
 		go = ->
 			eachTurn sim, canvas
-			sim.runningTimer = setTimeout(go, 250)
+			guiState.runningTimer = setTimeout(go, 250)
 		go()
 
 stopRunning = ->
-	sim.isRunning = false
-	if sim.runningTimer
-		clearTimeout sim.runningTimer
-		sim.runningTimer = null
+	guiState.isRunning = false
+	if guiState.runningTimer
+		clearTimeout guiState.runningTimer
+		guiState.runningTimer = null
 
 $ ->
-	canvas = $('#gameCanvas')[0]
+	canvas = guiState.canvas = $('#gameCanvas')[0]
 	canvas.width = 600
 	canvas.height = 600
 	compileCodeOnPage()
@@ -147,6 +152,6 @@ $ ->
 		if compileCodeOnPage()
 			sim.initDaemons()
 	$('#pause_resume').click ->
-		if sim.isRunning then stopRunning() else startRunning sim, canvas
+		if guiState.isRunning then stopRunning() else startRunning sim, canvas
 	startRunning sim, canvas
 
