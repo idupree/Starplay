@@ -274,6 +274,7 @@ eachTurn = (global, canvas) ->
 	$('#turn').text(global.time)
 	$('#turtles').text(global.turtles.length)
 
+#TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
 #just always run it, for now
 #daemon = ->
 #	eachTurn
