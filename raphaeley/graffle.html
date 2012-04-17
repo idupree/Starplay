@@ -48,10 +48,13 @@ modulo = global.modulo
 #Constants can be slider variables.
 
 initState = ->
-	global.turtles = [_.extend(global.newTurtle(), {x:0, y:0,color:'rgb(88,88,88)',heading:0,type:'crazy'})]
+	global.turtles = [_.extend(global.newTurtle(),
+		{x:0, y:0, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
 	patchcolor = ->
 		'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-	global.patches = ((_.extend(global.newPatch(), {color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}) for y in [0...20]) for x in [0...20])
+	global.patches = ((_.extend(global.newPatch(),
+		{color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}
+		) for y in [0...20]) for x in [0...20])
 	global.patches.width = global.patches.length
 	global.patches.height = global.patches[0].length
 	global.patches.each = (callback) ->
