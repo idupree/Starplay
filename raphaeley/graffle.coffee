@@ -275,12 +275,6 @@ eachTurn = (global, canvas) ->
 	$('#turtles').text(global.turtles.length)
 
 #TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
-#just always run it, for now
-#daemon = ->
-#	eachTurn
-#	setTimeout(daemon, 1000)
-#and just pretend it won't take too long to simulate..
-
 compileCodeOnPage = ->
 	try
 		$('#error').text('')
