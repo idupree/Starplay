@@ -1,8 +1,8 @@
 
 
 global = {}
-tau = global.tau = 6.28318530717958647692528676655900576839433879875021
-modulo = global.modulo = (num, mod) ->
+tau = 6.28318530717958647692528676655900576839433879875021
+modulo = (num, mod) ->
 	result = num % mod
 	result += mod if result < 0
 	result
@@ -102,8 +102,8 @@ compileCodeOnPage = ->
 		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
 			#bare because "new Function()" will make it non-bare anyway
 		console.log(codeInJS) if console and console.log
-		code = new Function("global", codeInJS)
-		fns = code global
+		code = new Function("global", "tau", "modulo", codeInJS)
+		fns = code global, tau, modulo
 		global.initState = fns.initState
 		global.initDaemons = fns.initDaemons
 		return true
