@@ -282,6 +282,7 @@ eachTurn = (global, canvas) ->
 
 compileCodeOnPage = ->
 	try
+		$('#error').text('')
 		codeInCoffee = $('.script').text()
 		codeInJS = CoffeeScript.compile codeInCoffee, bare: true
 			#bare because "new Function()" will make it non-bare anyway
