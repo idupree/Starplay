@@ -103,7 +103,6 @@ compileCodeOnPage = ->
 			#bare because "new Function()" will make it non-bare anyway
 		$('#compileDebug').text(codeInJS)
 		code = new Function("global", codeInJS)
-		$('#compileDebug').text(code+"")
 		fns = code global
 		global.initState = fns.initState
 		global.initDaemons = fns.initDaemons
