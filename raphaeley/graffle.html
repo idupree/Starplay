@@ -3,32 +3,39 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <title>ScriptoStar</title>
-        <link rel="stylesheet" href="demo.css" type="text/css" media="screen">
-        <link rel="stylesheet" href="demo-print.css" type="text/css" media="print">
         <script src="raphael.js" type="text/javascript" charset="utf-8"></script>
         <script src="underscore-min.js" type="text/javascript" charset="utf-8"></script>
         <script src="backbone-min.js" type="text/javascript" charset="utf-8"></script>
         <script src="coffee-script.js" type="text/javascript" charset="utf-8"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
         <script src="graffle.js" type="text/javascript" charset="utf-8"></script>
-        <style type="text/css" media="screen">
-            #holder {
-                -moz-border-radius: 10px;
-                -webkit-border-radius: 10px;
-                border: solid 1px #333;
+        <style type="text/css">
+            body, html {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                width: 100%;
+                background: #333;
+                color: #fff;
+                font: 300 100.1% "Helvetica Neue", Helvetica, "Arial Unicode MS", Arial, sans-serif;
             }
             p {
                 text-align: center;
+                margin: 5px 0;
             }
             canvas {
                 float: left;
+                margin: 5px 10px;
             }
             #buttons > button {
                 display: block;
                 margin-left: auto;
                 margin-right: auto;
             }
-            p.script, p#compileDebug { white-space: pre; text-align: left; }
+            p.script, p#compileDebug {
+                white-space: pre;
+                text-align: left;
+            }
             #compileDebug, hr { display: none; } /* it didn't have enough newlines in Firefox, & not important right now */
             #error { color: red; }
         </style>
