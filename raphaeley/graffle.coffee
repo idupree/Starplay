@@ -37,12 +37,12 @@ sim.patchDaemons = {}
 sim.newTurtle = (->
   Turtle = ->
   Turtle.prototype = sim.turtleFn
-  -> new Turtle()
+  return (attrs...) -> _.extend(new Turtle(), attrs...)
   )()
 sim.newPatch = (->
   Patch = ->
   Patch.prototype = sim.patchFn
-  -> new Patch()
+  return (attrs...) -> _.extend(new Patch(), attrs...)
   )()
 sim.time = 0 #time not turn because turn sounds like rotation
 
