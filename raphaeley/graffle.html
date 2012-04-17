@@ -55,15 +55,8 @@ initState = ->
     {x:0, y:0, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
   patchcolor = ->
     'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-  sim.patches = ((sim.newPatch(
-    {color:patchcolor, x:x, y:y, grass:0, 'delta:grass':0}
-    ) for y in [0...20]) for x in [0...20])
-  sim.patches.width = sim.patches.length
-  sim.patches.height = sim.patches[0].length
-  sim.patches.each = (callback) ->
-    for col, x in @
-      for patch, y in col
-        callback(patch, x, y)
+  sim.setAllPatches (x,y) ->
+    {color: patchcolor, grass:0, 'delta:grass':0}
 
 initDaemons = ->
   sim.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'

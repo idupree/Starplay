@@ -34,6 +34,16 @@ sim.turtleDaemons = {}
 sim.patchFn = {}
 sim.patchDaemons = {}
 
+sim.setAllPatches = (fn, width = 20, height = 20) ->
+  sim.patches = ( ( sim.newPatch(fn(x,y), {x: x, y: y}) \
+                  for y in [0...height]) for x in [0...width])
+  sim.patches.width = width
+  sim.patches.height = height
+  sim.patches.each = (callback) ->
+    for col, x in @
+      for patch, y in col
+        callback(patch, x, y)
+
 sim.newTurtle = (->
   Turtle = ->
   Turtle.prototype = sim.turtleFn
