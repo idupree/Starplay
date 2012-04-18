@@ -283,3 +283,6 @@ monospace, 14 ?
 
 #custom-stuff.
 #Constants can be slider variables.
+
+
+"Clear" button (& code-action)
