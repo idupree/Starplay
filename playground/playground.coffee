@@ -17,6 +17,10 @@ sim.turtleFn =
     baby = sim.newTurtle(@, mods)
     sim.turtles.push baby
     baby
+  die: ->
+    # TODO use a data structure for turtles that has O(1) delete
+    sim.turtles = _.without(sim.turtles, @)
+    null
   #...maybe have turtle-sets like jquery-sets ?
   forward: (dist = 1) ->
     @x = modulo (@x + dist * Math.cos @heading), sim.patches.width
