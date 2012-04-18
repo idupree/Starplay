@@ -1,6 +1,8 @@
 
 # playground/playground.html #
 
+http://www.idupree.com/starplay/
+
 This is a simulation somewhat like StarLogo
 (cf. Mitchel Resnick, _Turtles, Termites, and Traffic Jams:
 Explorations in Massively Parallel Microworlds_)
