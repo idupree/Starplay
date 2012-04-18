@@ -13,6 +13,8 @@ simple scripts,
 and "patches" - a grid of locations that can hold state (and also
 do things if they want to).
 
+The world wraps on the side and top/bottom (it's a torus).
+
 The code I'm writing and playing with is in
     playground/playground.{html,coffee}
 
