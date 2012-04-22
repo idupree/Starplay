@@ -272,10 +272,17 @@ $ ->
   thisPageTurtleFnList.on 'add', (model) ->
     $('#turtleFns').append new TurtleFnView(model: model).el
 
-  newTurtleDaemon = (name, implementation, activation) ->
+  newTurtleFn = (name, implementation, activation) ->
     thisPageTurtleFnList.create name: name, implementation: implementation, activation: activation
-  newTurtleDaemon 'speed', '-> @forward 1', "-> @type == 'bullet'"
-  newTurtleDaemon 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
+  newTurtleFn 'speed', '-> @forward 1', "-> @type == 'bullet'"
+  newTurtleFn 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
+  newTurtleFn 'wobble', """
+    ->
+      @rotateLeft tau / 16 * (Math.random() - 0.5)
+      @forward 0.25""",
+    """-> @type == 'crazy'"""
+  newTurtleFn 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]"
+  newTurtleFn 'layGrass', "@patchHere().grass += 5", "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()

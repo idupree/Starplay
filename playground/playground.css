@@ -39,19 +39,23 @@ p.script {
 #turtleFns {
   list-style: none;
   margin-left: 620px;
+  margin-right: 5px;
 }
 #turtleFns > li {
   text-indent: -8em;
   padding-left: 8em;
   margin: 5px 0;
+  border: 2px solid #aa0055;
 }
 #turtleFns > li > span {
   text-indent: 0;
   border: 2px solid green;
   display: inline-block;
-  vertical-align: top;
+  vertical-align: middle;
   min-width: 1.5em;
   min-height: 1em;
   padding: 0 1px;
-  margin: 2px 5px;
+  white-space: pre-wrap;
+  /*todo when using a real editor something  padding-left: 6em;
+  text-indent: -6em;*/
 }
