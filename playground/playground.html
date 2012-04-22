@@ -44,21 +44,6 @@ initState = ->
     {color: patchcolor, grass:0, 'delta:grass':0}
 
 initDaemons = ->
-  sim.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'
-  sim.turtleFn.speed = -> @forward 1
-  sim.turtleFn.wobble = ->
-    @rotateLeft tau / 16 * (Math.random() - 0.5)
-    @forward 0.25
-  sim.turtleFn.patchHere = -> sim.patches[Math.floor(@x)][Math.floor(@y)]
-  sim.turtleFn.layGrass = ->
-    @patchHere().grass += 5
-
-  sim.turtleDaemons =
-    speed: -> @type == 'bullet'
-    activateGun: -> @type == 'crazy' and sim.time % 8 == 0
-    wobble: -> @type == 'crazy'
-    layGrass: -> true
-
   diffuseGrass = ->
     transfer = (patch1, patch2) ->
       patch1.grass / 10 / (4+1)

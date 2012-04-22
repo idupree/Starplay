@@ -52,6 +52,11 @@ rand = {
 
 sim = {}
 
+coffeeenv = sim: sim, tau: tau, modulo: modulo
+
+#hack debug help
+window.StarPlay.sim = sim
+
 sim.turtleFn =
   clone: (mods = {}) ->
     baby = sim.newTurtle(@, mods)
@@ -160,6 +165,33 @@ eachTurn = ->
   $('#turn').text(sim.time)
   $('#turtles').text(sim.turtles.length)
 
+
+# Env is an object { name: value ... } where the names
+# are put into the script's environment (by making them
+# be function-arguments).
+#
+# thisVal defaults to undefined; it specifies the value of 'this'
+# in the top-level script environment.
+#
+# If the script returns a value, this function returns that value.
+evalScriptInEnv = (scriptText, env, thisVal) ->
+  # To get values, map from keys to make certain it's the same number
+  # of items in the same order (even if _.values might do that).
+  keys = _.keys env;
+  values = _.map keys, (key) -> env[key]
+  fn = Function.apply null, keys.concat scriptText
+  return fn.apply thisVal, values
+
+#compileValue = (coffeescript, env, thisVal) ->
+#  scriptAsCoffeeFunction = ('->\n'+coffeescript).replace(/\n/, '\n ')
+#  CoffeeScript.compile(, {bare:true})
+coffeeeval = (coffeescript, env, thisVal) ->
+  # because top-level doesn't make the last line a 'return' in normal coffee
+  readyCoffeeScript = ('return (->\n'+coffeescript).replace(/\n/, '\n ')+'\n).call(this)'
+  js = CoffeeScript.compile readyCoffeeScript, bare: true
+  return evalScriptInEnv js, env, thisVal
+
+
 #TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
 compileCodeOnPage = ->
   try
@@ -204,8 +236,16 @@ class TurtleFn extends Backbone.Model
   initialize: ->
     #if?
     @set name: generateWordNotIn sim.turtleFn if not @get('name')?
+    @oldName = @get 'name'
     @set implementation: '-> ' if not @get('implementation')?
     @set activation: '-> ' if not @get('activation')?
+    @on 'change', @updateSimCode, @
+  updateSimCode: ->
+    delete sim.turtleFn[@oldName]
+    delete sim.turtleDaemons[@oldName]
+    sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
+    sim.turtleDaemons[@get 'name'] = coffeeeval @get('activation'), coffeeenv if @get('activation')?
+    @oldName = @get 'name'
 
 class TurtleFnList extends Backbone.Collection
   model: TurtleFn
@@ -224,17 +264,20 @@ class TurtleFnView extends Backbone.View
     ></li>
     """
   events:
-    'blur .turtle-fn-implementation': 'recompile'
     #'click .turtle-fn-delete': 'remove' #??maybe? perhaps deleting the name (or impl?) & it asks if you want to delete.
     'blur .turtle-fn-name': 'rename'
+    'blur .turtle-fn-implementation': 'recompile'
     'blur .turtle-fn-activation': 'reactivate'
   initialize: ->
     @render()
     #@model.on 'change', @recompile, @
     #@model.on 'destroy',
-  recompile: ->
-  rename: ->
-  reactivate: ->
+  #no consistency/compilability checking yet
+  #red background? ability to reset to previous? undoes?
+  #possibly check that it compiles? also doesn't throw exceptions?? lintz? in real time while typing?
+  rename: -> @model.set 'name', @$('.turtle-fn-name').text()
+  recompile: -> @model.set 'implementation', @$('.turtle-fn-implementation').text()
+  reactivate: -> @model.set 'activation', @$('.turtle-fn-activation').text()
   render: ->
     @$('.turtle-fn-name').text @model.get 'name'
     @$('.turtle-fn-implementation').text @model.get 'implementation'
@@ -282,7 +325,7 @@ $ ->
       @forward 0.25""",
     """-> @type == 'crazy'"""
   newTurtleFn 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]"
-  newTurtleFn 'layGrass', "@patchHere().grass += 5", "-> true"
+  newTurtleFn 'layGrass', "-> @patchHere().grass += 5", "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
