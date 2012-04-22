@@ -40,10 +40,18 @@ p.script {
 #error {
   color: red;
 }
-#turtleFns {
-  list-style: none;
+div.next-to-board {
   margin-left: 620px;
   margin-right: 5px;
+}
+.fn-heading {
+  background-color: $maroon;
+  padding: 6px 6px 2px;
+  font-weight: bold;
+  color: #eee;
+}
+#turtleFns {
+  list-style: none;
   
   > li {
     text-indent: -8em;
