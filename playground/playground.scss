@@ -6,6 +6,9 @@ img {color: transparent; font-size: 0; border: 0; vertical-align: middle; -ms-in
 
 
 $dark-background: #333;
+$maroon: #a05;
+$grassy: #3a3;
+$bushy: #008000;
 
 body, html {
   margin: 0;
@@ -45,12 +48,12 @@ p.script {
   > li {
     text-indent: -8em;
     padding-left: 8em;
-    border: 4px solid #a05;
-    background-color: #3a3;
+    border: 4px solid $maroon;
+    background-color: $grassy;
     
     > span {
       text-indent: 0;
-      border: 2px solid green;
+      border: 2px solid $bushy;
       display: inline-block;
       vertical-align: middle;
       min-width: 1.5em;
