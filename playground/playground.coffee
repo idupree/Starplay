@@ -192,8 +192,6 @@ stopRunning = ->
     clearTimeout guiState.runningTimer
     guiState.runningTimer = null
 
-mana = ['foo', 'bar', 'baz']
-
 $ ->
   canvas = guiState.canvas = $('#gameCanvas')[0]
   canvas.width = 600
@@ -216,7 +214,9 @@ $ ->
       sim.initDaemons()
   $('#pause_resume').click ->
     if guiState.isRunning then stopRunning() else startRunning()
-  $('#testplus').click ->
-    $('#buttons').append($('<p />').text(rand.okayArrayMember mana, (z)->z!='foo'))
+  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click ->
+    $('#buttons').append $('<p />').text rand.okayArrayMember \
+      window.StarPlay.words, (word) -> not _.has sim.turtleFn, word
+  window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
   startRunning()
 
