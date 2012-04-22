@@ -8,6 +8,46 @@ modulo = (num, mod) ->
   result += mod if result < 0
   result
 
+rand = {
+  # Returns an integer in [min, max)
+  intInHalfOpenRange: (min, max) ->
+    Math.floor(Math.random() * (max - min)) + min
+
+  # Returns an integer in [min, max]
+  intInClosedRange: (min, max) ->
+    Math.floor(Math.random() * (max+1 - min)) + min
+
+  arrayIndex: (arr) ->
+    rand.intInHalfOpenRange(0, arr.length)
+
+  arrayMember: (arr) ->
+    arr[rand.intInHalfOpenRange(0, arr.length)]
+
+  # average case O(1) for mostly-okay arrays (worst case O(n) if really unlucky),
+  # up to likely O(n) for mostly-not-okay arrays.
+  # Returns null if no item meets the predicate. (Or should it throw?)
+  okayArrayMember: (arr, predicate) ->
+    if arr.length == 0 then return null
+
+    member = rand.arrayMember arr
+    if predicate member then return member
+
+    randomTries = Math.floor(arr.length / 10)
+    for _ in [0..randomTries]
+      member = rand.arrayMember arr
+      if predicate member then return member
+
+    okayArr = _.filter arr, predicate
+    if okayArr.length != 0
+    then return rand.arrayMember okayArr
+    else return null
+  #i dislike infinite loops, so don't do this:
+  #  loop
+  #    member = randArrayMember arr
+  #    if predicate member then return member
+  }
+
+
 # Simulation impl
 
 sim = {}
