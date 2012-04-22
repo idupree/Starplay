@@ -1,0 +1,29 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background: #333;
+  color: #fff;
+  font: 300 100.1% "Helvetica Neue", Helvetica, "Arial Unicode MS", Arial, sans-serif;
+}
+p {
+  text-align: center;
+  margin: 5px;
+}
+canvas {
+  float: left;
+  margin: 5px 10px;
+}
+#buttons > button {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+p.script {
+  white-space: pre;
+  text-align: left;
+}
+#error {
+  color: red;
+}
