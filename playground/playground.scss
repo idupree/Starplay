@@ -41,25 +41,27 @@ p.script {
   list-style: none;
   margin-left: 620px;
   margin-right: 5px;
-}
-#turtleFns > li {
-  text-indent: -8em;
-  padding-left: 8em;
-  border: 4px solid #a05;
-  background-color: #3a3;
-}
-#turtleFns > li > span {
-  text-indent: 0;
-  border: 2px solid green;
-  display: inline-block;
-  vertical-align: middle;
-  min-width: 1.5em;
-  min-height: 1em;
-  padding: 0 1px;
-  white-space: pre-wrap;
-  background-color: $dark-background;
-  margin: 3px;
   
-  /*todo when using a real editor something  padding-left: 6em;
-  text-indent: -6em;*/
+  > li {
+    text-indent: -8em;
+    padding-left: 8em;
+    border: 4px solid #a05;
+    background-color: #3a3;
+    
+    > span {
+      text-indent: 0;
+      border: 2px solid green;
+      display: inline-block;
+      vertical-align: middle;
+      min-width: 1.5em;
+      min-height: 1em;
+      padding: 0 1px;
+      white-space: pre-wrap;
+      background-color: $dark-background;
+      margin: 3px;
+
+      /*todo when using a real editor something  padding-left: 6em;
+      text-indent: -6em;*/
+    }
+  }
 }
