@@ -205,7 +205,7 @@ class TurtleFn extends Backbone.Model
     #if?
     @set name: generateWordNotIn sim.turtleFn if not @get('name')?
     @set implementation: '-> ' if not @get('implementation')?
-    @set activation: null if not @get('activation')?
+    @set activation: '-> ' if not @get('activation')?
 
 class TurtleFnList extends Backbone.Collection
   model: TurtleFn
