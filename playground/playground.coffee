@@ -192,6 +192,62 @@ stopRunning = ->
     clearTimeout guiState.runningTimer
     guiState.runningTimer = null
 
+
+generateWordNotIn = (notInObj) ->
+  rand.okayArrayMember window.StarPlay.words,
+      (word) -> not _.has notInObj, word
+
+# This has a name (identifier-style(?) string),
+# implementation (CoffeeScript text evaluating to a value, possibly of function type),
+# and activation (CoffeeScript text evaluating to a function returning boolean, or nothing)
+class TurtleFn extends Backbone.Model
+  initialize: ->
+    #if?
+    @set
+      name: generateWordNotIn sim.turtleFn
+      implementation: '-> '
+      activation: null
+
+class TurtleFnList extends Backbone.Collection
+  model: TurtleFn
+  localStorage: new Store('StarPlay-TurtleFnList')
+
+
+class TurtleFnView extends Backbone.View
+  #tagName: 'li'
+  #className: 'turtle-fn-view'
+  make: -> @$domTemplate.clone()[0]
+  $domTemplate: $ """
+    <li
+      ><span class="turtle-fn-name" contentEditable="true"></span
+      ><span class="turtle-fn-implementation" contentEditable="true"></span
+      ><span class="turtle-fn-activation" contentEditable="true"></span
+    ></li>
+    """
+  events:
+    'blur .turtle-fn-implementation': 'recompile'
+    #'click .turtle-fn-delete': 'remove' #??maybe? perhaps deleting the name (or impl?) & it asks if you want to delete.
+    'blur .turtle-fn-name': 'rename'
+    'blur .turtle-fn-activation': 'reactivate'
+  initialize: ->
+    @render()
+    #@model.on 'change', @recompile, @
+    #@model.on 'destroy',
+  recompile: ->
+  rename: ->
+  reactivate: ->
+  render: ->
+    @$('.turtle-fn-name').text @model.get 'name'
+    @$('.turtle-fn-implementation').text @model.get 'implementation'
+    @$('.turtle-fn-activation').text @model.get 'activation'
+    @
+    
+  #later worry about codemirror
+
+# name text turns red while it's the same as another? and has a popup or?'
+
+thisPageTurtleFnList = new TurtleFnList
+
 $ ->
   canvas = guiState.canvas = $('#gameCanvas')[0]
   canvas.width = 600
@@ -214,9 +270,8 @@ $ ->
       sim.initDaemons()
   $('#pause_resume').click ->
     if guiState.isRunning then stopRunning() else startRunning()
-  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click ->
-    $('#buttons').append $('<p />').text rand.okayArrayMember \
-      window.StarPlay.words, (word) -> not _.has sim.turtleFn, word
+  thisPageTurtleFnList.on 'add', (model) ->
+    $('#turtleFns').append new TurtleFnView(model: model).el
+  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
   startRunning()
-

@@ -36,3 +36,15 @@ p.script {
 #error {
   color: red;
 }
+ul#turtleFns {
+  list-style: none;
+}
+#turtleFns > li > span {
+  border: 2px solid green;
+  display: inline-block;
+  vertical-align: top;
+  min-width: 1.5em;
+  min-height: 1em;
+  padding: 0 1px;
+  margin: 5px;
+}
