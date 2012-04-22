@@ -5,13 +5,14 @@ h1,h2,h3,h4,h5,h6 {font-size: 100%;font-weight: inherit;}
 img {color: transparent; font-size: 0; border: 0; vertical-align: middle; -ms-interpolation-mode: bicubic;}
 
 
+$dark-background: #333;
 
 body, html {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
-  background: #333;
+  background: $dark-background;
   color: #fff;
   font: 300 100.1% "Helvetica Neue", Helvetica, "Arial Unicode MS", Arial, sans-serif;
 }
@@ -44,8 +45,9 @@ p.script {
 #turtleFns > li {
   text-indent: -8em;
   padding-left: 8em;
-  margin: 5px 0;
-  border: 2px solid #aa0055;
+  margin: 7px 0;
+  border: 2px solid #a05;
+  background-color: #3a3;
 }
 #turtleFns > li > span {
   text-indent: 0;
@@ -56,6 +58,12 @@ p.script {
   min-height: 1em;
   padding: 0 1px;
   white-space: pre-wrap;
+  background-color: $dark-background;
+  margin-left: 3px;
+  &:first-child {
+    margin-left: 0;
+  }
+  
   /*todo when using a real editor something  padding-left: 6em;
   text-indent: -6em;*/
 }
