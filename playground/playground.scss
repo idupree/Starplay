@@ -27,10 +27,7 @@ canvas {
   float: left;
   margin: 5px 10px;
 }
-#buttons > button {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+button {
   padding: 0 6px;
 }
 p.script {
@@ -43,12 +40,15 @@ p.script {
 div.next-to-board {
   margin-left: 620px;
   margin-right: 5px;
+  background-color: $maroon;
 }
 .fn-heading {
-  background-color: $maroon;
   padding: 6px 6px 2px;
   font-weight: bold;
   color: #eee;
+}
+#testplus {
+  margin: 2px 5px 4px;
 }
 #turtleFns {
   list-style: none;
