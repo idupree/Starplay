@@ -33,7 +33,7 @@ rand = {
     if predicate member then return member
 
     randomTries = Math.floor(arr.length / 10)
-    for _ in [0..randomTries]
+    for _ignored in [0..randomTries]
       member = rand.arrayMember arr
       if predicate member then return member
 
