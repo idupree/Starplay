@@ -1,3 +1,11 @@
+
+article, aside, figure, footer, header, hgroup, menu, nav, section { display:block; }
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,button,textarea,select,p,blockquote,th,td{margin:0;padding:0}
+h1,h2,h3,h4,h5,h6 {font-size: 100%;font-weight: inherit;}
+img {color: transparent; font-size: 0; border: 0; vertical-align: middle; -ms-interpolation-mode: bicubic;}
+
+
+
 body, html {
   margin: 0;
   padding: 0;
@@ -19,6 +27,7 @@ canvas {
   display: block;
   margin-left: auto;
   margin-right: auto;
+  padding: 0 6px;
 }
 p.script {
   white-space: pre;
