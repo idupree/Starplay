@@ -203,10 +203,9 @@ generateWordNotIn = (notInObj) ->
 class TurtleFn extends Backbone.Model
   initialize: ->
     #if?
-    @set
-      name: generateWordNotIn sim.turtleFn
-      implementation: '-> '
-      activation: null
+    @set name: generateWordNotIn sim.turtleFn if not @get('name')?
+    @set implementation: '-> ' if not @get('implementation')?
+    @set activation: null if not @get('activation')?
 
 class TurtleFnList extends Backbone.Collection
   model: TurtleFn
@@ -272,6 +271,12 @@ $ ->
     if guiState.isRunning then stopRunning() else startRunning()
   thisPageTurtleFnList.on 'add', (model) ->
     $('#turtleFns').append new TurtleFnView(model: model).el
+
+  newTurtleDaemon = (name, implementation, activation) ->
+    thisPageTurtleFnList.create name: name, implementation: implementation, activation: activation
+  newTurtleDaemon 'speed', '-> @forward 1', "-> @type == 'bullet'"
+  newTurtleDaemon 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
+  
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
   startRunning()
