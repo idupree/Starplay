@@ -263,12 +263,14 @@ class TurtleFn extends Backbone.Model
       @set {key: valf()}, setOptions if not @get(key)?
   initialize: ->
     console.log 'foo', sim.turtleFn
-    @setIfNotF({
+    @setIfNotF
+      type: -> 'turtle'
       name: -> generateWordNotIn sim.turtleFn
       implementation: -> '-> '
-      activation: -> '-> '})
+      activation: -> '-> '
+      error: -> null
     @oldName = @get 'name'
-    @on 'change:name change:implementation change:activation', @updateSimCode, @
+    @on 'change:type change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
     delete sim.turtleFn[@oldName]
