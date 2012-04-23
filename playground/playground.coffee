@@ -280,9 +280,9 @@ class TurtleFn extends Backbone.Model
     @on 'change:type change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
-    delete sim.fn.turtle[@previous 'name']
+    delete sim.fn[@previous 'type'][@previous 'name']
     try
-      fn = sim.fn.turtle[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
+      fn = sim.fn[@get 'type'][@get 'name'] = coffeeeval @get('implementation'), coffeeenv
       fn.type = @get 'type'
       fn.activation = coffeeeval @get('activation'), coffeeenv if @get('activation')?
       @set 'error': null
