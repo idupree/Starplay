@@ -1,102 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="utf-8">
+        <meta charset="utf-8" />
         <title>ScriptoStar</title>
-        <!--<script src="raphael.js"></script>-->
-        <script src="underscore-min.js"></script>
-        <!--<script src="backbone-min.js"></script>-->
-        <script src="coffee-script.js"></script>
+        <link rel="stylesheet" href="playground.css" />
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script>
+            "use strict";
+            window.StarPlay = {};
+            window.StarPlay.wordsAjaxRequest = $.getJSON('words-int.json', function(data) { window.StarPlay.words = data; });
+        </script>
+        <script src="underscoreBackbonePlusLocalStorage-min.js"></script>
         <script src="playground.js"></script>
-        <style>
-            body, html {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                width: 100%;
-                background: #333;
-                color: #fff;
-                font: 300 100.1% "Helvetica Neue", Helvetica, "Arial Unicode MS", Arial, sans-serif;
-            }
-            p {
-                text-align: center;
-                margin: 5px;
-            }
-            canvas {
-                float: left;
-                margin: 5px 10px;
-            }
-            #buttons > button {
-                display: block;
-                margin-left: auto;
-                margin-right: auto;
-            }
-            p.script {
-                white-space: pre;
-                text-align: left;
-            }
-            #error { color: red; }
-        </style>
+        <script src="coffee-script.js"></script>
+        <!--[if lte IE 8]><script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
     </head>
     <body>
         <canvas id="gameCanvas"></canvas>
         <p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
         <div id="buttons">
-        <button id="restart">Restart (no recompile)</button>
-        <button id="reload">Restart (recompile)</button>
-        <button id="redaemon">Reload daemons (recompile)</button>
+        <button id="restart">Restart</button>
         <button id="pause_resume">Pause/Resume</button>
         </div>
-
-<p class="script" contentEditable="true">
-initState = ->
-  sim.turtles = [sim.newTurtle(
-    {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
-  patchcolor = ->
-    'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-  sim.setAllPatches (x,y) ->
-    {color: patchcolor, grass:0, 'delta:grass':0}
-
-initDaemons = ->
-  sim.turtleFn.activateGun = -> @clone type: 'bullet', color: 'red'
-  sim.turtleFn.speed = -> @forward 1
-  sim.turtleFn.wobble = ->
-    @rotateLeft tau / 16 * (Math.random() - 0.5)
-    @forward 0.25
-  sim.turtleFn.patchHere = -> sim.patches[Math.floor(@x)][Math.floor(@y)]
-  sim.turtleFn.layGrass = ->
-    @patchHere().grass += 5
-
-  sim.turtleDaemons =
-    speed: -> @type == 'bullet'
-    activateGun: -> @type == 'crazy' and sim.time % 8 == 0
-    wobble: -> @type == 'crazy'
-    layGrass: -> true
-
-  diffuseGrass = ->
-    transfer = (patch1, patch2) ->
-      patch1.grass / 10 / (4+1)
-    sim.patches.each (patch1, x, y) ->
-      for patch2 in [ sim.patches[modulo x+1, sim.patches.width ][y] ,
-                      sim.patches[x][modulo y+1, sim.patches.height] ]
-        deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
-        patch1['delta:grass'] += deltaHere
-        patch2['delta:grass'] -= deltaHere
-    sim.patches.each (patch, x, y) ->
-      patch.grass += patch['delta:grass']
-      patch['delta:grass'] = 0
-
-  decayGrass = ->
-    sim.patches.each (patch, x, y) ->
-      patch.grass *= 0.99
-
-  sim.globalDaemons =
-    diffuseGrass: diffuseGrass
-    decayGrass: decayGrass
-
-return { initState: initState, initDaemons: initDaemons }
-
-</p>
+        <div class="next-to-board">
+            <div class="fn-heading">Name ; Rule ; Active?</div>
+            <ul id="turtleFns"></ul>
+            <button id="testplus">+</button>
+        </div>
+        <p class="onGitHub">(<a target="_blank" href="https://github.com/idupree/Starplay">https://github.com/idupree/Starplay</a>)</p>
     </body>
 </html>

@@ -1,0 +1,122 @@
+
+article, aside, figure, footer, header, hgroup, menu, nav, section { display:block; }
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,button,textarea,select,p,blockquote,th,td{margin:0;padding:0}
+h1,h2,h3,h4,h5,h6 {font-size: 100%;font-weight: inherit;}
+img {color: transparent; font-size: 0; border: 0; vertical-align: middle; -ms-interpolation-mode: bicubic;}
+
+@mixin box-shadow($val) {
+        // firefox 3.6, older safari and chrome
+        -moz-box-shadow: $val;
+        -webkit-box-shadow: $val;
+        box-shadow: $val;
+}
+
+$dark-background: #333;
+$maroon: #a05;
+$grassy: #3a3;
+$bushy: #008000;
+$red-error: #e55;
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background: $dark-background;
+  color: #fff;
+  font: 300 100.1% "Helvetica Neue", Helvetica, "Arial Unicode MS", Arial, sans-serif;
+}
+p {
+  text-align: center;
+  margin: 5px;
+}
+canvas {
+  float: left;
+  margin: 5px 10px;
+}
+button {
+  padding: 0 6px;
+}
+#error {
+  color: red;
+}
+div.next-to-board {
+  margin-left: 620px;
+  margin-right: 5px;
+  background-color: $maroon;
+}
+.fn-heading {
+  padding: 6px 6px 2px;
+  font-weight: bold;
+  color: #eee;
+}
+#testplus {
+  margin: 2px 5px 4px;
+}
+#turtleFns {
+  list-style: none;
+  
+  > li {
+    text-indent: -8em;
+    padding-left: 8em;
+    border: 4px solid $maroon;
+    background-color: $grassy;
+
+    > * {
+      text-indent: 0;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    > div.turtle-fn-menu > div {
+      display: none;
+      background-color: $grassy;
+      > a {
+        font-weight: bold;
+        text-decoration: none;
+        color: black;
+        line-height: 23px;
+        height: 23px;
+        display: inline-block;
+        vertical-align: bottom;
+        > img {
+          display: block;
+        }
+        &:hover, &:focus, &:active {
+          @include box-shadow ((0 0 6px 2px white));
+        }
+      }
+    }
+    > div.turtle-fn-menu:hover > div,
+    > div.turtle-fn-menu.menuOpen > div {
+      display: block;
+      position: absolute;
+    }
+    
+    > span {
+      border: 2px solid $bushy;
+      min-width: 1.5em;
+      min-height: 1em;
+      padding: 0 1px;
+      white-space: pre-wrap;
+      background-color: $dark-background;
+      margin: 3px;
+
+      /*todo when using a real editor something  padding-left: 6em;
+      text-indent: -6em;*/
+    }
+    &.hasError {
+      background-color: $red-error;
+    }
+    > .error {
+      font-weight: bold;
+      font-style: italic;
+    }
+  }
+}
+
+p.onGitHub {
+  text-align: right;
+  font-weight: bold;
+  margin-top: 1em;
+}
