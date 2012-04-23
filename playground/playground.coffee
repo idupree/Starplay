@@ -260,10 +260,16 @@ generateWordNotIn = (notInObj) ->
 class TurtleFn extends Backbone.Model
   setIfNot: (props, setOptions) ->
     for key, val of props
-      @set {key: val}, setOptions if not @get(key)?
+      if not @get(key)?
+        obj = {}
+        obj[key] = val
+        @set obj, setOptions
   setIfNotF: (props, setOptions) ->
     for key, valf of props
-      @set {key: valf()}, setOptions if not @get(key)?
+      if not @get(key)?
+        obj = {}
+        obj[key] = valf()
+        @set obj, setOptions
   initialize: ->
     @setIfNotF
       type: -> 'turtle'
