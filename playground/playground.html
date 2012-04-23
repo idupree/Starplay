@@ -32,14 +32,5 @@
             <ul id="turtleFns"></ul>
             <button id="testplus">+</button>
         </div>
-
-<p class="initScript" contentEditable="true">
-sim.turtles = [sim.newTurtle(
-  {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
-patchcolor = ->
-  'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-sim.setAllPatches (x,y) ->
-  {color: patchcolor, grass:0}
-</p>
     </body>
 </html>

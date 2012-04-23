@@ -120,18 +120,28 @@ sim.newPatch = (->
   Patch.prototype = sim.fn.patch
   return (attrs...) -> _.extend(new Patch(), attrs...)
   )()
-sim.time = 0 #time not turn because turn sounds like rotation
 
 
-simATurn = (sim) ->
+simATurn = (sim, isInit = false) ->
   onDynamicUserCodeError = (error, type, fnName) ->
     console.log error.message #?
     #TODO: fix more-UI-related model code in the simulation:
     #TODO: and fix the O(n) in fn.turtle.length behavior:
     thisPageTurtleFnList.where(type: type, name: fnName)[0].set error: error
+  sim.time = 0 if isInit #time not turn because turn sounds like rotation
+  sim.time += 1 if not isInit
+  #Do world first because for initing that makes sense.
+  for own fnName, fn of sim.fn.world
+    condition = fn.activation
+    if condition? and (not fn.isInit == not isInit)
+      try
+        if condition.apply(turtle)
+          fn.apply(sim.fn.world)
+      catch error
+        onDynamicUserCodeError error, 'world', fnName
   for own fnName, fn of sim.fn.turtle
     condition = fn.activation
-    if condition?
+    if condition? and (not fn.isInit == not isInit)
       for turtle in sim.turtles
         try
           if condition.apply(turtle)
@@ -140,22 +150,13 @@ simATurn = (sim) ->
           onDynamicUserCodeError error, 'turtle', fnName
   for own fnName, fn of sim.fn.patch
     condition = fn.activation
-    if condition?
+    if condition? and (not fn.isInit == not isInit)
       sim.patches.each (patch) ->
         try
           if condition.apply(patch)
             fn.apply(patch)
         catch error
           onDynamicUserCodeError error, 'patch', fnName
-  for own fnName, fn of sim.fn.world
-    condition = fn.activation
-    if condition?
-      try
-        if condition.apply(turtle)
-          fn.apply(sim.fn.world)
-      catch error
-        onDynamicUserCodeError error, 'world', fnName
-  sim.time += 1
   return
 
 #The rest of the code is UI stuff
@@ -202,8 +203,12 @@ renderToCanvas = ->
 
 
 eachTurn = ->
-  simATurn sim
-  renderToCanvas()
+  # outer try in case anything is messed up, like editing the init
+  # script wrong making there be no sim.patches (that was an issue)
+  try
+    simATurn sim
+    renderToCanvas()
+  catch error
   $('#turn').text(sim.time)
   $('#turtles').text(sim.turtles.length)
 
@@ -281,17 +286,19 @@ class TurtleFn extends Backbone.Model
   initialize: ->
     @setIfNotF
       type: -> 'turtle'
+      isInit: -> false
       name: -> generateWordNotIns [sim.fn.turtle, sim.fn.patch, sim.fn.world]
       implementation: -> '-> '
       activation: -> '-> '
       error: -> null
-    @on 'change:type change:name change:implementation change:activation', @updateSimCode, @
+    @on 'change:type change:isInit change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
     delete sim.fn[@previous 'type'][@previous 'name']
     try
       fn = sim.fn[@get 'type'][@get 'name'] = coffeeeval @get('implementation'), coffeeenv
       fn.type = @get 'type'
+      fn.isInit = @get 'isInit'
       fn.activation = coffeeeval @get('activation'), coffeeenv if @get('activation')?
       @set 'error': null
     catch error
@@ -318,6 +325,8 @@ class TurtleFnView extends Backbone.View
             ><img alt="be patch" src="patch23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-become-world"
             ><img alt="be world" src="world23x23.png" width="23" height="23" /></a
+          ><a href="javascript:;" class="fn-become-init"
+            ><img alt="be init" src="init23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-delete"
             >Delete</a
         ></div
@@ -335,17 +344,14 @@ class TurtleFnView extends Backbone.View
     'blur .turtle-fn-name': 'rename'
     'blur .turtle-fn-implementation': 'recompile'
     'blur .turtle-fn-activation': 'reactivate'
-    'click .fn-become-turtle': -> @model.set 'type': 'turtle'
-    'click .fn-become-patch': -> @model.set 'type': 'patch'
-    'click .fn-become-world': -> @model.set 'type': 'world'
+    'click .fn-become-turtle': -> @model.set type: 'turtle', isInit: false
+    'click .fn-become-patch': -> @model.set type: 'patch', isInit: false
+    'click .fn-become-world': -> @model.set type: 'world', isInit: false
+    'click .fn-become-init': -> @model.set type: 'world', isInit: true
   initialize: ->
     @render()
-    @model.on 'change:type', =>
-      type = @model.get 'type'
-      @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
-    @model.on 'change:error', =>
-      @$('.error').text (@model.get('error') || '')
-      @$el.toggleClass 'hasError', (@model.get 'error')?
+    @model.on 'change:type', @renderType, @
+    @model.on 'change:error', @renderError, @
     #@model.on 'change', @recompile, @
     #@model.on 'destroy',
   #no consistency/compilability checking yet
@@ -354,13 +360,18 @@ class TurtleFnView extends Backbone.View
   rename: -> @model.set 'name', @$('.turtle-fn-name').text()
   recompile: -> @model.set 'implementation', @$('.turtle-fn-implementation').text()
   reactivate: -> @model.set 'activation', @$('.turtle-fn-activation').text()
+  renderType: ->
+      type = if @model.get 'isInit' then 'init' else @model.get 'type'
+      @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
+  renderError: ->
+      @$('.error').text (@model.get('error') || '')
+      @$el.toggleClass 'hasError', (@model.get 'error')?
   render: ->
     @$('.turtle-fn-name').text @model.get 'name'
     @$('.turtle-fn-implementation').text @model.get 'implementation'
     @$('.turtle-fn-activation').text @model.get 'activation'
-    @$('.error').text (@model.get('error') || '')
-    type = @model.get 'type'
-    @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
+    @renderError()
+    @renderType()
     @
     
   #later worry about codemirror
@@ -375,7 +386,7 @@ runInitScript = ->
   sim.turtles = []
   delete sim.patches
   try
-    coffeeeval $('.initScript').text(), coffeeenv
+    simATurn sim, true
     return true
   catch error
     #TODO put error somewhere
@@ -392,8 +403,8 @@ $ ->
   thisPageTurtleFnList.on 'add', (model) ->
     $('#turtleFns').append new TurtleFnView(model: model).el
 
-  newFn = (type, name, implementation, activation) ->
-    thisPageTurtleFnList.create type: type, name: name, implementation: implementation, activation: activation
+  newFn = (type, name, implementation, activation, isInit = false) ->
+    thisPageTurtleFnList.create type: type, name: name, implementation: implementation, activation: activation, isInit: isInit
   newFn 'turtle', 'speed', '-> @forward 1', "-> @type == 'bullet'"
   newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
   newFn 'turtle', 'wobble', """
@@ -408,6 +419,15 @@ $ ->
   newFn 'world', 'diffuseGrass', """
     -> @diffuse4 'grass', (patch1) -> patch1.grass / 10 / (4+1)
     """, "-> true"
+  newFn 'world', 'setup', """
+    ->
+      sim.turtles = [sim.newTurtle(
+        {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
+      patchcolor = ->
+        'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
+      sim.setAllPatches (x,y) ->
+        {color: patchcolor, grass:0}
+    """, '-> true', true
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
