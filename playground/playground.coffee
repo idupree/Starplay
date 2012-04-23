@@ -8,6 +8,9 @@ modulo = (num, mod) ->
   result += mod if result < 0
   result
 
+window.console ?= {}
+window.console.log ?= ->
+
 rand = {
   # Returns an integer in [min, max)
   intInHalfOpenRange: (min, max) ->
@@ -107,7 +110,7 @@ sim.time = 0 #time not turn because turn sounds like rotation
 
 simATurn = (sim) ->
   onDynamicUserCodeError = (error, type, fnName) ->
-    console.log error.message if console and console.log #todo better
+    console.log error.message #?
     #TODO: fix more-UI-related model code in the simulation:
     #TODO: and fix the O(n) in fn.turtle.length behavior:
     thisPageTurtleFnList.where(type: type, name: fnName)[0].set error: error
@@ -271,7 +274,7 @@ class TurtleFn extends Backbone.Model
       @set 'error': null
     catch error
       @set 'error': error.message
-      console.log @get('name'), error, error.message, error.stack if console and console.log
+      console.log @get('name'), error, error.message, error.stack
 
 class TurtleFnList extends Backbone.Collection
   model: TurtleFn
