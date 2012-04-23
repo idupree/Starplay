@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="utf-8">
+        <meta charset="utf-8" />
         <title>ScriptoStar</title>
         <link rel="stylesheet" href="playground.css" />
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
@@ -10,15 +10,10 @@
             window.StarPlay = {};
             window.StarPlay.wordsAjaxRequest = $.getJSON('words-int.json', function(data) { window.StarPlay.words = data; });
         </script>
-        <!--<script src="raphael.js"></script>-->
-        <script src="underscore-min.js"></script>
-        <script src="backbone-min.js"></script>
-        <script src="backbone.localStorage-min.js"></script>
-        <script src="coffee-script.js"></script>
+        <script src="underscoreBackbonePlusLocalStorage-min.js"></script>
         <script src="playground.js"></script>
+        <script src="coffee-script.js"></script>
         <!--[if lte IE 8]><script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
-
-        </style>
     </head>
     <body>
         <canvas id="gameCanvas"></canvas>
