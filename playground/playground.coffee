@@ -83,7 +83,22 @@ sim.fn.turtle =
 
 
 sim.fn.patch = {}
-sim.fn.world = {}
+sim.fn.world =
+  # transferAmountFn(patch1, patch2) must return the numerical amount
+  # of propName transferred from patch1 to patch2 in a turn;
+  # actually fn(patch1, patch2) - fn(patch2, patch1) is transferred.
+  diffuse4: (propName, transferAmountFn) ->
+    sim.patches.each (patch, x, y) ->
+      patch['delta:'+propName] = 0
+      if not _.isFinite patch[propName] then patch.grass = 0
+    sim.patches.each (patch1, x, y) ->
+      for patch2 in [ sim.patches[modulo x+1, sim.patches.width ][y] ,
+                      sim.patches[x][modulo y+1, sim.patches.height] ]
+        deltaHere = transferAmountFn(patch2, patch1) - transferAmountFn(patch1, patch2)
+        patch1['delta:'+propName] += deltaHere
+        patch2['delta:'+propName] -= deltaHere
+    sim.patches.each (patch, x, y) ->
+      patch[propName] += patch['delta:'+propName]
 
 sim.setAllPatches = (fn, width = 20, height = 20) ->
   sim.patches = ( ( sim.newPatch(fn(x,y), {x: x, y: y}) \
@@ -391,20 +406,7 @@ $ ->
   
   newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
   newFn 'world', 'diffuseGrass', """
-    ->
-      transfer = (patch1, patch2) ->
-        patch1.grass / 10 / (4+1)
-      sim.patches.each (patch, x, y) ->
-        patch['delta:grass'] = 0
-        if not _.isFinite patch.grass then patch.grass = 0
-      sim.patches.each (patch1, x, y) ->
-        for patch2 in [ sim.patches[modulo x+1, sim.patches.width ][y] ,
-                        sim.patches[x][modulo y+1, sim.patches.height] ]
-          deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
-          patch1['delta:grass'] += deltaHere
-          patch2['delta:grass'] -= deltaHere
-      sim.patches.each (patch, x, y) ->
-        patch.grass += patch['delta:grass']
+    -> @diffuse4 'grass', (patch1) -> patch1.grass / 10 / (4+1)
     """, "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
