@@ -78,7 +78,6 @@ sim.turtleFn =
     @heading = modulo (@heading - amount), tau
     @
 
-sim.turtleDaemons = {}
 
 sim.patchFn = {}
 sim.patchDaemons = {}
@@ -109,11 +108,11 @@ sim.time = 0 #time not turn because turn sounds like rotation
 simATurn = (sim) ->
   onDynamicUserCodeError = (error) ->
     console.log error.message if console and console.log #todo better
-  for own fnName, condition of sim.turtleDaemons
-    fn = sim.turtleFn[fnName]
+  for own fnName, fn of sim.turtleFn
+    condition = fn.activation
     for turtle in sim.turtles
       try
-        if condition.apply(turtle)
+        if condition?.apply(turtle)
           fn.apply(turtle)
       catch error
         onDynamicUserCodeError error
@@ -262,7 +261,6 @@ class TurtleFn extends Backbone.Model
     for key, valf of props
       @set {key: valf()}, setOptions if not @get(key)?
   initialize: ->
-    console.log 'foo', sim.turtleFn
     @setIfNotF
       type: -> 'turtle'
       name: -> generateWordNotIn sim.turtleFn
@@ -273,10 +271,9 @@ class TurtleFn extends Backbone.Model
     @updateSimCode()
   updateSimCode: ->
     delete sim.turtleFn[@previous 'name']
-    delete sim.turtleDaemons[@previous 'name']
     try
       sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
-      sim.turtleDaemons[@get 'name'] = coffeeeval @get('activation'), coffeeenv if @get('activation')?
+      sim.turtleFn[@get 'name'].activation = coffeeeval @get('activation'), coffeeenv if @get('activation')?
       @set 'error': null
     catch error
       @set 'error': error.message
