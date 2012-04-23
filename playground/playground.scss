@@ -9,6 +9,7 @@ $dark-background: #333;
 $maroon: #a05;
 $grassy: #3a3;
 $bushy: #008000;
+$red-error: #e55;
 
 body, html {
   margin: 0;
@@ -73,6 +74,16 @@ div.next-to-board {
 
       /*todo when using a real editor something  padding-left: 6em;
       text-indent: -6em;*/
+    }
+    &.hasError {
+      background-color: $red-error;
+    }
+    > .error {
+      text-indent: 0;
+      display: inline-block;
+      vertical-align: middle;
+      font-weight: bold;
+      font-style: italic;
     }
   }
 }

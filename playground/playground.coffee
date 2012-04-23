@@ -107,18 +107,32 @@ sim.time = 0 #time not turn because turn sounds like rotation
 
 
 simATurn = (sim) ->
+  onDynamicUserCodeError = (error) ->
+    console.log error.message if console and console.log #todo better
   for own fnName, condition of sim.turtleDaemons
     fn = sim.turtleFn[fnName]
     for turtle in sim.turtles
-      if condition.apply(turtle)
-        fn.apply(turtle)
+      try
+        if condition.apply(turtle)
+          fn.apply(turtle)
+      catch error
+        onDynamicUserCodeError error
+        #TODO: fix more-UI-related model code in the simulation:
+        #TODO: and fix the O(n) in turtleFn.length behavior:
+        thisPageTurtleFnList.where(name: fnName)[0].set error: error
   for own fnName, condition of sim.patchDaemons
     fn = sim.patchFn
     sim.patches.each (patch) ->
-      if condition.apply(patch)
-        fn.apply(patch)
+      try
+        if condition.apply(patch)
+          fn.apply(patch)
+      catch error
+        onDynamicUserCodeError error
   for own fnName, fn of sim.globalDaemons
-    fn()
+    try
+      fn()
+    catch error
+      onDynamicUserCodeError error
   sim.time += 1
   return
 
@@ -187,8 +201,16 @@ evalScriptInEnv = (scriptText, env, thisVal) ->
 #  CoffeeScript.compile(, {bare:true})
 coffeeeval = (coffeescript, env, thisVal) ->
   # because top-level doesn't make the last line a 'return' in normal coffee
-  readyCoffeeScript = ('return (->\n'+coffeescript).replace(/\n/, '\n ')+'\n).call(this)'
-  js = CoffeeScript.compile readyCoffeeScript, bare: true
+  try
+    readyCoffeeScript = ('return (->\n'+coffeescript).replace(/\n/, '\n ')+'\n).call(this)'
+    js = CoffeeScript.compile readyCoffeeScript, bare: true
+    #console.log js
+  catch error
+    # Adjust for the extra line I have to put at the beginning of the script.
+    # Also, if it's a one-liner, don't bother with a line number at all.
+    error.message = error.message.replace /\ on line ([0-9]+)/, (_all, line) ->
+      if /\n/.test coffeescript then ' on line '+(line - 1) else ""
+    throw error
   return evalScriptInEnv js, env, thisVal
 
 
@@ -239,13 +261,19 @@ class TurtleFn extends Backbone.Model
     @oldName = @get 'name'
     @set implementation: '-> ' if not @get('implementation')?
     @set activation: '-> ' if not @get('activation')?
-    @on 'change', @updateSimCode, @
+    @on 'change:name change:implementation change:activation', @updateSimCode, @
+    @updateSimCode()
   updateSimCode: ->
     delete sim.turtleFn[@oldName]
     delete sim.turtleDaemons[@oldName]
-    sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
-    sim.turtleDaemons[@get 'name'] = coffeeeval @get('activation'), coffeeenv if @get('activation')?
     @oldName = @get 'name'
+    try
+      sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
+      sim.turtleDaemons[@get 'name'] = coffeeeval @get('activation'), coffeeenv if @get('activation')?
+      @set 'error': null
+    catch error
+      @set 'error': error.message
+      console.log @get('name'), error, error.message, error.stack if console and console.log
 
 class TurtleFnList extends Backbone.Collection
   model: TurtleFn
@@ -261,6 +289,7 @@ class TurtleFnView extends Backbone.View
       ><span class="turtle-fn-name" contentEditable="true"></span
       ><span class="turtle-fn-implementation" contentEditable="true"></span
       ><span class="turtle-fn-activation" contentEditable="true"></span
+      ><output class="error"></output
     ></li>
     """
   events:
@@ -270,6 +299,9 @@ class TurtleFnView extends Backbone.View
     'blur .turtle-fn-activation': 'reactivate'
   initialize: ->
     @render()
+    @model.on 'change:error', =>
+      @$('.error').text (@model.get('error') || '')
+      @$el.toggleClass 'hasError', (@model.get 'error')?
     #@model.on 'change', @recompile, @
     #@model.on 'destroy',
   #no consistency/compilability checking yet
@@ -282,6 +314,7 @@ class TurtleFnView extends Backbone.View
     @$('.turtle-fn-name').text @model.get 'name'
     @$('.turtle-fn-implementation').text @model.get 'implementation'
     @$('.turtle-fn-activation').text @model.get 'activation'
+    @$('.error').text (@model.get('error') || '')
     @
     
   #later worry about codemirror
