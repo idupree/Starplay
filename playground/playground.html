@@ -62,7 +62,9 @@ initDaemons = ->
     sim.patches.each (patch, x, y) ->
       patch.grass *= 0.99
 
-  sim.globalDaemons =
+  diffuseGrass.activation = decayGrass.activation = -> true
+
+  sim.globalFn =
     diffuseGrass: diffuseGrass
     decayGrass: decayGrass
 

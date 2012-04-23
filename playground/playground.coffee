@@ -80,7 +80,6 @@ sim.turtleFn =
 
 
 sim.patchFn = {}
-sim.patchDaemons = {}
 
 sim.setAllPatches = (fn, width = 20, height = 20) ->
   sim.patches = ( ( sim.newPatch(fn(x,y), {x: x, y: y}) \
@@ -110,28 +109,32 @@ simATurn = (sim) ->
     console.log error.message if console and console.log #todo better
   for own fnName, fn of sim.turtleFn
     condition = fn.activation
-    for turtle in sim.turtles
+    if condition?
+      for turtle in sim.turtles
+        try
+          if condition.apply(turtle)
+            fn.apply(turtle)
+        catch error
+          onDynamicUserCodeError error
+          #TODO: fix more-UI-related model code in the simulation:
+          #TODO: and fix the O(n) in turtleFn.length behavior:
+          thisPageTurtleFnList.where(name: fnName)[0].set error: error
+  for own fnName, fn of sim.patchFn
+    condition = fn.activation
+    if condition?
+      sim.patches.each (patch) ->
+        try
+          if condition.apply(patch)
+            fn.apply(patch)
+        catch error
+          onDynamicUserCodeError error
+  for own fnName, fn of sim.globalFn
+    condition = fn.activation
+    if condition?
       try
-        if condition?.apply(turtle)
-          fn.apply(turtle)
+        fn()
       catch error
         onDynamicUserCodeError error
-        #TODO: fix more-UI-related model code in the simulation:
-        #TODO: and fix the O(n) in turtleFn.length behavior:
-        thisPageTurtleFnList.where(name: fnName)[0].set error: error
-  for own fnName, condition of sim.patchDaemons
-    fn = sim.patchFn
-    sim.patches.each (patch) ->
-      try
-        if condition.apply(patch)
-          fn.apply(patch)
-      catch error
-        onDynamicUserCodeError error
-  for own fnName, fn of sim.globalDaemons
-    try
-      fn()
-    catch error
-      onDynamicUserCodeError error
   sim.time += 1
   return
 
