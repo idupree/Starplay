@@ -293,14 +293,28 @@ class TurtleFnView extends Backbone.View
   make: -> @$domTemplate.clone()[0]
   $domTemplate: $ """
     <li
-      ><img alt="turtle" src="turtle23x23.png" width="23" height="23"
-      /><span class="turtle-fn-name" contentEditable="true"></span
+      ><div class="turtle-fn-menu"
+        ><img alt="turtle" tabindex="0" class="turtle-fn-type" src="turtle23x23.png" width="23" height="23"
+        /><div
+          ><a href="javascript:;" class="fn-become-turtle"
+            ><img alt="be turtle" src="turtle23x23.png" width="23" height="23" /></a
+          ><a href="javascript:;" class="fn-become-patch"
+            ><img alt="be patch" src="patch23x23.png" width="23" height="23" /></a
+          ><a href="javascript:;" class="fn-become-world"
+            ><img alt="be world" src="globe23x23.png" width="23" height="23" /></a
+          ><a href="javascript:;" class="fn-delete"
+            >Delete</a
+        ></div
+      ></div
+      ><span class="turtle-fn-name" contentEditable="true"></span
       ><span class="turtle-fn-implementation" contentEditable="true"></span
       ><span class="turtle-fn-activation" contentEditable="true"></span
       ><output class="error"></output
     ></li>
     """
   events:
+    'focus div.turtle-fn-menu *': -> @$('.turtle-fn-menu').addClass 'menuOpen'
+    'blur div.turtle-fn-menu *': -> @$('.turtle-fn-menu').removeClass 'menuOpen'
     #'click .turtle-fn-delete': 'remove' #??maybe? perhaps deleting the name (or impl?) & it asks if you want to delete.
     'blur .turtle-fn-name': 'rename'
     'blur .turtle-fn-implementation': 'recompile'
