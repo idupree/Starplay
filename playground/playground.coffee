@@ -106,8 +106,11 @@ sim.time = 0 #time not turn because turn sounds like rotation
 
 
 simATurn = (sim) ->
-  onDynamicUserCodeError = (error) ->
+  onDynamicUserCodeError = (error, type, fnName) ->
     console.log error.message if console and console.log #todo better
+    #TODO: fix more-UI-related model code in the simulation:
+    #TODO: and fix the O(n) in fn.turtle.length behavior:
+    thisPageTurtleFnList.where(type: type, name: fnName)[0].set error: error
   for own fnName, fn of sim.fn.turtle
     condition = fn.activation
     if condition?
@@ -116,10 +119,7 @@ simATurn = (sim) ->
           if condition.apply(turtle)
             fn.apply(turtle)
         catch error
-          onDynamicUserCodeError error
-          #TODO: fix more-UI-related model code in the simulation:
-          #TODO: and fix the O(n) in fn.turtle.length behavior:
-          thisPageTurtleFnList.where(name: fnName)[0].set error: error
+          onDynamicUserCodeError error, 'turtle', fnName
   for own fnName, fn of sim.fn.patch
     condition = fn.activation
     if condition?
@@ -128,14 +128,14 @@ simATurn = (sim) ->
           if condition.apply(patch)
             fn.apply(patch)
         catch error
-          onDynamicUserCodeError error
+          onDynamicUserCodeError error, 'patch', fnName
   for own fnName, fn of sim.fn.world
     condition = fn.activation
     if condition?
       try
         fn()
       catch error
-        onDynamicUserCodeError error
+        onDynamicUserCodeError error, 'world', fnName
   sim.time += 1
   return
 
