@@ -286,7 +286,8 @@ class TurtleFnView extends Backbone.View
   make: -> @$domTemplate.clone()[0]
   $domTemplate: $ """
     <li
-      ><span class="turtle-fn-name" contentEditable="true"></span
+      ><img alt="turtle" src="turtle23x23.png" width="23" height="23"
+      /><span class="turtle-fn-name" contentEditable="true"></span
       ><span class="turtle-fn-implementation" contentEditable="true"></span
       ><span class="turtle-fn-activation" contentEditable="true"></span
       ><output class="error"></output
