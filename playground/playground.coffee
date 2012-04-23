@@ -389,6 +389,7 @@ $ ->
         patch1.grass / 10 / (4+1)
       sim.patches.each (patch, x, y) ->
         patch['delta:grass'] = 0
+        if not _.isFinite patch.grass then patch.grass = 0
       sim.patches.each (patch1, x, y) ->
         for patch2 in [ sim.patches[modulo x+1, sim.patches.width ][y] ,
                         sim.patches[x][modulo y+1, sim.patches.height] ]
@@ -396,8 +397,7 @@ $ ->
           patch1['delta:grass'] += deltaHere
           patch2['delta:grass'] -= deltaHere
       sim.patches.each (patch, x, y) ->
-        oldGrass = if _.isNumber patch.grass then patch.grass else 0
-        patch.grass = oldGrass + patch['delta:grass']
+        patch.grass += patch['delta:grass']
     """, "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
