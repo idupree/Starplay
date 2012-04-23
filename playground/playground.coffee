@@ -128,6 +128,10 @@ simATurn = (sim, isInit = false) ->
     #TODO: fix more-UI-related model code in the simulation:
     #TODO: and fix the O(n) in fn.turtle.length behavior:
     thisPageTurtleFnList.where(type: type, name: fnName)[0].set error: error
+    #TODO: remove this error message after a while if the error hasn't
+    #happened for a while. Or something to make sure that if the error
+    #needed to be fixed somewhere else, and you did, this message here
+    #doesn't bug you indefinitely.
   sim.time = 0 if isInit #time not turn because turn sounds like rotation
   sim.time += 1 if not isInit
   #Do world first because for initing that makes sense.
