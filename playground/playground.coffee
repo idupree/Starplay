@@ -128,7 +128,7 @@ simATurn = (sim) ->
             fn.apply(patch)
         catch error
           onDynamicUserCodeError error
-  for own fnName, fn of sim.globalFn
+  for own fnName, fn of sim.worldFn
     condition = fn.activation
     if condition?
       try
