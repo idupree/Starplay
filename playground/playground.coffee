@@ -395,6 +395,20 @@ $ ->
   newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
   
   newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
+  newFn 'world', 'diffuseGrass', """
+    ->
+      transfer = (patch1, patch2) ->
+        patch1.grass / 10 / (4+1)
+      sim.patches.each (patch1, x, y) ->
+        for patch2 in [ sim.patches[modulo x+1, sim.patches.width ][y] ,
+                        sim.patches[x][modulo y+1, sim.patches.height] ]
+          deltaHere = transfer(patch2, patch1) - transfer(patch1, patch2)
+          patch1['delta:grass'] += deltaHere
+          patch2['delta:grass'] -= deltaHere
+      sim.patches.each (patch, x, y) ->
+        patch.grass += patch['delta:grass']
+        patch['delta:grass'] = 0
+    """, "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
