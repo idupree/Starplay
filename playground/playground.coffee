@@ -293,7 +293,7 @@ class TurtleFn extends Backbone.Model
       isInit: -> false
       name: -> generateWordNotIns [sim.fn.turtle, sim.fn.patch, sim.fn.world]
       implementation: -> '-> '
-      activation: -> '-> '
+      activation: -> '-> true'
       error: -> null
     @on 'change:type change:isInit change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
@@ -416,7 +416,7 @@ $ ->
       @rotateLeft tau / 16 * (Math.random() - 0.5)
       @forward 0.25""",
     """-> @type == 'crazy'"""
-  newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]"
+  newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
   newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
   
   newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
