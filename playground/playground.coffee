@@ -310,8 +310,14 @@ class TurtleFnView extends Backbone.View
     'blur .turtle-fn-name': 'rename'
     'blur .turtle-fn-implementation': 'recompile'
     'blur .turtle-fn-activation': 'reactivate'
+    'click .fn-become-turtle': -> @model.set 'type': 'turtle'
+    'click .fn-become-patch': -> @model.set 'type': 'patch'
+    'click .fn-become-world': -> @model.set 'type': 'world'
   initialize: ->
     @render()
+    @model.on 'change:type', =>
+      type = @model.get 'type'
+      @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
     @model.on 'change:error', =>
       @$('.error').text (@model.get('error') || '')
       @$el.toggleClass 'hasError', (@model.get 'error')?
