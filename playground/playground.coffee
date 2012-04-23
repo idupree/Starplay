@@ -269,13 +269,11 @@ class TurtleFn extends Backbone.Model
       implementation: -> '-> '
       activation: -> '-> '
       error: -> null
-    @oldName = @get 'name'
     @on 'change:type change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
-    delete sim.turtleFn[@oldName]
-    delete sim.turtleDaemons[@oldName]
-    @oldName = @get 'name'
+    delete sim.turtleFn[@previous 'name']
+    delete sim.turtleDaemons[@previous 'name']
     try
       sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
       sim.turtleDaemons[@get 'name'] = coffeeeval @get('activation'), coffeeenv if @get('activation')?
