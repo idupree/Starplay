@@ -255,12 +255,19 @@ generateWordNotIn = (notInObj) ->
 # implementation (CoffeeScript text evaluating to a value, possibly of function type),
 # and activation (CoffeeScript text evaluating to a function returning boolean, or nothing)
 class TurtleFn extends Backbone.Model
+  setIfNot: (props, setOptions) ->
+    for key, val of props
+      @set {key: val}, setOptions if not @get(key)?
+  setIfNotF: (props, setOptions) ->
+    for key, valf of props
+      @set {key: valf()}, setOptions if not @get(key)?
   initialize: ->
-    #if?
-    @set name: generateWordNotIn sim.turtleFn if not @get('name')?
+    console.log 'foo', sim.turtleFn
+    @setIfNotF({
+      name: -> generateWordNotIn sim.turtleFn
+      implementation: -> '-> '
+      activation: -> '-> '})
     @oldName = @get 'name'
-    @set implementation: '-> ' if not @get('implementation')?
-    @set activation: '-> ' if not @get('activation')?
     @on 'change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
