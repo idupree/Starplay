@@ -136,7 +136,8 @@ simATurn = (sim) ->
     condition = fn.activation
     if condition?
       try
-        fn()
+        if condition.apply(turtle)
+          fn.apply(sim.fn.world)
       catch error
         onDynamicUserCodeError error, 'world', fnName
   sim.time += 1
