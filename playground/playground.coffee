@@ -250,9 +250,9 @@ stopRunning = ->
     guiState.runningTimer = null
 
 
-generateWordNotIn = (notInObj) ->
+generateWordNotIns = (notInObjs) ->
   rand.okayArrayMember window.StarPlay.words,
-      (word) -> not _.has notInObj, word
+      (word) -> _.all notInObjs, (obj) -> not _.has obj, word
 
 # This has a name (identifier-style(?) string),
 # implementation (CoffeeScript text evaluating to a value, possibly of function type),
@@ -273,7 +273,7 @@ class TurtleFn extends Backbone.Model
   initialize: ->
     @setIfNotF
       type: -> 'turtle'
-      name: -> generateWordNotIn sim.fn.turtle
+      name: -> generateWordNotIns [sim.fn.turtle, sim.fn.patch, sim.fn.world]
       implementation: -> '-> '
       activation: -> '-> '
       error: -> null
