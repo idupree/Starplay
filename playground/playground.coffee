@@ -309,7 +309,7 @@ class TurtleFnView extends Backbone.View
           ><a href="javascript:;" class="fn-become-patch"
             ><img alt="be patch" src="patch23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-become-world"
-            ><img alt="be world" src="globe23x23.png" width="23" height="23" /></a
+            ><img alt="be world" src="world23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-delete"
             >Delete</a
         ></div
@@ -345,6 +345,8 @@ class TurtleFnView extends Backbone.View
     @$('.turtle-fn-implementation').text @model.get 'implementation'
     @$('.turtle-fn-activation').text @model.get 'activation'
     @$('.error').text (@model.get('error') || '')
+    type = @model.get 'type'
+    @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
     @
     
   #later worry about codemirror
@@ -380,17 +382,19 @@ $ ->
   thisPageTurtleFnList.on 'add', (model) ->
     $('#turtleFns').append new TurtleFnView(model: model).el
 
-  newTurtleFn = (name, implementation, activation) ->
-    thisPageTurtleFnList.create name: name, implementation: implementation, activation: activation
-  newTurtleFn 'speed', '-> @forward 1', "-> @type == 'bullet'"
-  newTurtleFn 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
-  newTurtleFn 'wobble', """
+  newFn = (type, name, implementation, activation) ->
+    thisPageTurtleFnList.create type: type, name: name, implementation: implementation, activation: activation
+  newFn 'turtle', 'speed', '-> @forward 1', "-> @type == 'bullet'"
+  newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
+  newFn 'turtle', 'wobble', """
     ->
       @rotateLeft tau / 16 * (Math.random() - 0.5)
       @forward 0.25""",
     """-> @type == 'crazy'"""
-  newTurtleFn 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]"
-  newTurtleFn 'layGrass', "-> @patchHere().grass += 5", "-> true"
+  newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]"
+  newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
+  
+  newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()

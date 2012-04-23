@@ -58,15 +58,10 @@ initDaemons = ->
       patch.grass += patch['delta:grass']
       patch['delta:grass'] = 0
 
-  decayGrass = ->
-    sim.patches.each (patch, x, y) ->
-      patch.grass *= 0.99
-
-  diffuseGrass.activation = decayGrass.activation = -> true
+  diffuseGrass.activation = -> true
 
   sim.fn.world =
     diffuseGrass: diffuseGrass
-    decayGrass: decayGrass
 
 return { initState: initState, initDaemons: initDaemons }
 
