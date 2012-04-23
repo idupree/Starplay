@@ -206,8 +206,7 @@ coffeeeval = (coffeescript, env, thisVal) ->
   # because top-level doesn't make the last line a 'return' in normal coffee
   try
     readyCoffeeScript = ('return (->\n'+coffeescript).replace(/\n/, '\n ')+'\n).call(this)'
-    js = CoffeeScript.compile readyCoffeeScript, bare: true
-    #console.log js
+    js = '"use strict";' + CoffeeScript.compile readyCoffeeScript, bare: true
   catch error
     # Adjust for the extra line I have to put at the beginning of the script.
     # Also, if it's a one-liner, don't bother with a line number at all.
