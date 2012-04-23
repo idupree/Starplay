@@ -218,22 +218,6 @@ coffeeeval = (coffeescript, env, thisVal) ->
 
 
 #TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
-compileCodeOnPage = ->
-  try
-    $('#error').text('')
-    codeInCoffee = $('.script').text()
-    codeInJS = CoffeeScript.compile codeInCoffee, bare: true
-      #bare because "new Function()" will make it non-bare anyway
-    console.log(codeInJS) if console and console.log
-    code = new Function("sim", "tau", "modulo", codeInJS)
-    fns = code sim, tau, modulo
-    sim.initState = fns.initState
-    sim.initDaemons = fns.initDaemons
-    return true
-  catch error
-    console.log error, error.message, error.stack if console and console.log
-    $('#error').text("Error " + error.message)
-    return false
 
 startRunning = ->
   guiState.isRunning = true
@@ -357,26 +341,22 @@ class TurtleFnView extends Backbone.View
 
 thisPageTurtleFnList = new TurtleFnList
 
+runInitScript = ->
+  sim.turtles = []
+  delete sim.patches
+  try
+    coffeeeval $('.initScript').text(), coffeeenv
+    return true
+  catch error
+    #TODO put error somewhere
+    return false
+
 $ ->
   canvas = guiState.canvas = $('#gameCanvas')[0]
   canvas.width = 600
   canvas.height = 600
-  compileCodeOnPage()
-  sim.initState()
-  sim.initDaemons()
-  #TODO Should this code clear turtles/patches/turtleFn/etc? or rely on their code to do it or.
   $('#restart').click ->
-    sim.initState()
-    sim.initDaemons()
-    startRunning() # ?
-  $('#reload').click ->
-    if compileCodeOnPage()
-      sim.initState()
-      sim.initDaemons()
-      startRunning() # ?
-  $('#redaemon').click ->
-    if compileCodeOnPage()
-      sim.initDaemons()
+    if runInitScript() then startRunning() else stopRunning()
   $('#pause_resume').click ->
     if guiState.isRunning then stopRunning() else startRunning()
   thisPageTurtleFnList.on 'add', (model) ->
@@ -412,4 +392,5 @@ $ ->
   
   window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
+  runInitScript()
   startRunning()

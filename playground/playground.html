@@ -24,9 +24,7 @@
         <canvas id="gameCanvas"></canvas>
         <p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
         <div id="buttons">
-        <button id="restart">Restart (no recompile)</button>
-        <button id="reload">Restart (recompile)</button>
-        <button id="redaemon">Reload daemons (recompile)</button>
+        <button id="restart">Restart</button>
         <button id="pause_resume">Pause/Resume</button>
         </div>
         <div class="next-to-board">
@@ -35,19 +33,13 @@
             <button id="testplus">+</button>
         </div>
 
-<p class="script" contentEditable="true">
-initState = ->
-  sim.turtles = [sim.newTurtle(
-    {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
-  patchcolor = ->
-    'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
-  sim.setAllPatches (x,y) ->
-    {color: patchcolor, grass:0, 'delta:grass':0}
-
-initDaemons = ->
-
-return { initState: initState, initDaemons: initDaemons }
-
+<p class="initScript" contentEditable="true">
+sim.turtles = [sim.newTurtle(
+  {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
+patchcolor = ->
+  'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
+sim.setAllPatches (x,y) ->
+  {color: patchcolor, grass:0, 'delta:grass':0}
 </p>
     </body>
 </html>
