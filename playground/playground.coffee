@@ -56,8 +56,8 @@ coffeeenv = sim: sim, tau: tau, modulo: modulo
 
 #hack debug help
 window.StarPlay.sim = sim
-
-sim.turtleFn =
+sim.fn = {}
+sim.fn.turtle =
   clone: (mods = {}) ->
     baby = sim.newTurtle(@, mods)
     sim.turtles.push baby
@@ -79,7 +79,8 @@ sim.turtleFn =
     @
 
 
-sim.patchFn = {}
+sim.fn.patch = {}
+sim.fn.world = {}
 
 sim.setAllPatches = (fn, width = 20, height = 20) ->
   sim.patches = ( ( sim.newPatch(fn(x,y), {x: x, y: y}) \
@@ -93,12 +94,12 @@ sim.setAllPatches = (fn, width = 20, height = 20) ->
 
 sim.newTurtle = (->
   Turtle = ->
-  Turtle.prototype = sim.turtleFn
+  Turtle.prototype = sim.fn.turtle
   return (attrs...) -> _.extend(new Turtle(), attrs...)
   )()
 sim.newPatch = (->
   Patch = ->
-  Patch.prototype = sim.patchFn
+  Patch.prototype = sim.fn.patch
   return (attrs...) -> _.extend(new Patch(), attrs...)
   )()
 sim.time = 0 #time not turn because turn sounds like rotation
@@ -107,7 +108,7 @@ sim.time = 0 #time not turn because turn sounds like rotation
 simATurn = (sim) ->
   onDynamicUserCodeError = (error) ->
     console.log error.message if console and console.log #todo better
-  for own fnName, fn of sim.turtleFn
+  for own fnName, fn of sim.fn.turtle
     condition = fn.activation
     if condition?
       for turtle in sim.turtles
@@ -117,9 +118,9 @@ simATurn = (sim) ->
         catch error
           onDynamicUserCodeError error
           #TODO: fix more-UI-related model code in the simulation:
-          #TODO: and fix the O(n) in turtleFn.length behavior:
+          #TODO: and fix the O(n) in fn.turtle.length behavior:
           thisPageTurtleFnList.where(name: fnName)[0].set error: error
-  for own fnName, fn of sim.patchFn
+  for own fnName, fn of sim.fn.patch
     condition = fn.activation
     if condition?
       sim.patches.each (patch) ->
@@ -128,7 +129,7 @@ simATurn = (sim) ->
             fn.apply(patch)
         catch error
           onDynamicUserCodeError error
-  for own fnName, fn of sim.worldFn
+  for own fnName, fn of sim.fn.world
     condition = fn.activation
     if condition?
       try
@@ -266,16 +267,16 @@ class TurtleFn extends Backbone.Model
   initialize: ->
     @setIfNotF
       type: -> 'turtle'
-      name: -> generateWordNotIn sim.turtleFn
+      name: -> generateWordNotIn sim.fn.turtle
       implementation: -> '-> '
       activation: -> '-> '
       error: -> null
     @on 'change:type change:name change:implementation change:activation', @updateSimCode, @
     @updateSimCode()
   updateSimCode: ->
-    delete sim.turtleFn[@previous 'name']
+    delete sim.fn.turtle[@previous 'name']
     try
-      fn = sim.turtleFn[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
+      fn = sim.fn.turtle[@get 'name'] = coffeeeval @get('implementation'), coffeeenv
       fn.type = @get 'type'
       fn.activation = coffeeeval @get('activation'), coffeeenv if @get('activation')?
       @set 'error': null
