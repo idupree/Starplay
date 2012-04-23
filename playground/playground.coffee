@@ -286,6 +286,8 @@ class TurtleFnView extends Backbone.View
     
   #later worry about codemirror
 
+# cf http://www.chris-granger.com/2012/02/26/connecting-to-your-creation/ which i saw a few days after starting this project
+
 # name text turns red while it's the same as another? and has a popup or?'
 
 thisPageTurtleFnList = new TurtleFnList
