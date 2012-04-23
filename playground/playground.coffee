@@ -161,11 +161,11 @@ renderToCanvas = ->
   ctx.scale(canvas.width / sim.patches.width, canvas.height / sim.patches.height)
 
   sim.patches.each (patch, x, y) ->
-    ctx.fillStyle = if typeof patch.color == 'function' then patch.color() else patch.color
+    ctx.fillStyle = _.result patch, 'color'
     ctx.fillRect(x, y, 0.95, 0.95)
   
   for turtle in sim.turtles
-    ctx.fillStyle = if typeof turtle.color == 'function' then turtle.color() else turtle.color
+    ctx.fillStyle = _.result turtle, 'color'
     ctx.save()
     ctx.translate(turtle.x, turtle.y)
     ctx.rotate(turtle.heading)
