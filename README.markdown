@@ -38,14 +38,14 @@ in order to aid debugging and make people more comfortable with
 using CoffeeScript.
 Indentation matters.  The last line of a function implicitly
 has a `return` prefixed to it if there isn't one there.
-`@` means `this`, and `@thing` means 'this.thing'.
-'(a, b) -> stuff' creates a function.  Zero-argument functions
-may have the argument tuple omitted ('-> stuff').
+`@` means `this`, and `@thing` means `this.thing`.
+`(a, b) -> stuff` creates a function.  Zero-argument functions
+may have the argument tuple omitted (`-> stuff`).
 Function-call argument parens, object-construction curly-brackets,
 etc., may be omitted in some cases.
-An entire CoffeeScript is wrapped in (function{}()), and 'var'
+An entire CoffeeScript is wrapped in `(function{...}())`, and `var`
 is implicit; thus it's impossible to write to global variables
-except by saying things like 'window.foo = "bar"'.
+except by saying things like `window.foo = "bar"`.
 
 http://coffeescript.org/
 
