@@ -144,6 +144,14 @@ lispy.parseProgram = function(str) {
 //This should probably (be used when) eval args first, not duplicate them like that
 //Or name the args (give them wacky names)
 //beta-reduce depth first deeper first left-to-right
+//ALSO bug beware http://foldoc.org/name+capture
+//if args are not in NORMAL FORM with all their non bound vars
+//already substituted (locally non bound ones; & globally non bound ones as errors or undef)
+// http://foldoc.org/Weak+Head+Normal+Form
+// http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
+// http://en.wikipedia.org/wiki/Beta_normal_form
+
+//...larger arguments get (randomly)named, perhaps
 lispy.betaReduceO_N = function(parseTree) {
   // pattern-match ((fn (params...) body...) args...)
   assert(parseTree.type === compositeType.list);
