@@ -4,9 +4,9 @@
 
 var lispy = (window || exports).lispy = {};
 
-var assert = function(b) {
+var assert = function(b, str) {
   if(!b) {
-    throw "assert failure!";
+    throw ("assert failure! " + (""+str));
   }
 };
 
@@ -151,30 +151,85 @@ lispy.parseProgram = function(str) {
 // http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
 // http://en.wikipedia.org/wiki/Beta_normal_form
 
+function keepMetaDataFrom(tree, arrayTree) {
+  for(var key in tree) {
+    if(_.has(tree, key) && !/^[0-9]+$/.test(key)) {
+      arrayTree[key] = tree[key];
+    }
+  }
+  return arrayTree;
+}
+
 //...larger arguments get (randomly)named, perhaps
-lispy.betaReduceO_N = function(parseTree) {
+lispy.betaReduceO_N = function(tree) {
   // pattern-match ((fn (params...) body...) args...)
-  assert(parseTree.type === compositeType.list);
-  assert(parseTree.length >= 1);
-  var fn = parseTree[0];
-  var args = parseTree.slice(1);
-  assert(fn.length > 2);
-  assert(fn[0].type === tokenType.identifier);
-  assert(fn[0].string === 'fn');
-  assert(fn[1].type === compositeType.list);
+  assert(lispy.isHeadBetaReducible(tree), "beta beta");
+  //assert(tree.type === compositeType.list);
+  //assert(tree.length >= 1);
+  var fn = tree[0];
+  var args = tree.slice(1);
+  //assert(fn.length > 2);
+  //assert(fn[0].type === tokenType.identifier);
+  //assert(fn[0].string === 'fn');
+  //assert(fn[1].type === compositeType.list);
   var params = fn[1];
-  var body = fn.slice(2);
+  var body = keepMetaDataFrom(fn, fn.slice(2));
+  body.type = compositeType.program;
 
   var substitutions = {};
-  assert(params.length === args.length); //no silly stuff!
+  assert(params.length === args.length, "equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
-    substitutions[params[i]] = args[i];
+    assert(params[i].type === tokenType.identifier, "params are identifiers");
+    substitutions[params[i].string] = args[i];
   }
 
   // We need to substitute it everywhere except where it's
   // named in a let or lambda
   // [and except where it's quoted / part of a macro]
   return lispy.substitute(substitutions, body);
+};
+
+// evaluates all beta-redexes not within a lambda (?)
+// evaluates until we have a int or lambda?
+// prevents list literals from being partly evaled?
+lispy.isHeadBetaReducible = function(tree) {
+  return tree.type === compositeType.list &&
+    tree.length >= 1 && tree[0].type === compositeType.list &&
+    tree[0].length > 2 &&
+    tree[0][0].type === tokenType.identifier &&
+    tree[0][0].string === 'fn' &&
+    tree[0][1].type === compositeType.list;
+};
+
+
+// lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
+// lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
+// lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
+lispy.evaluate = function(tree) {
+  while(true) {
+    if(lispy.isHeadBetaReducible(tree)) {
+      tree = lispy.strictBetaReduceO_N(tree);
+    }
+    else if(tree.type === compositeType.program) {
+      return keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
+    }
+    else {
+      return tree;
+    }
+  }
+};
+
+function shallowCopyArray(arr) {
+  return keepMetaDataFrom(arr, _.map(arr, _.identity));
+}
+
+lispy.strictBetaReduceO_N = function(tree) {
+  assert(lispy.isHeadBetaReducible(tree), "strictBeta beta");
+  var argsEvaledTree = shallowCopyArray(tree);
+  for(var i = 1; i !== tree.length; ++i) {
+    argsEvaledTree[i] = lispy.evaluate(tree[i])
+  }
+  return lispy.betaReduceO_N(argsEvaledTree);
 };
 
 /*
@@ -196,18 +251,18 @@ lispy.substitute = function(varsToTreesMap, tree) {
   if(tree.type === compositeType.list || tree.type === compositeType.program) {
     if(tree[0].type === tokenType.identifier && tree[0].string === 'fn') {
       var fn = tree;
-      assert(fn.length > 2);
-      assert(fn[1].type === compositeType.list);
+      assert(fn.length > 2, "substitute: fn binding is fn, 1");
+      assert(fn[1].type === compositeType.list, "substitute: fn binding is fn, 2");
       var bindings = _.pluck(fn[1], 'string');
       var subMap = _.omit(varsToTreesMap, bindings);
-      return _.map(tree, function(sub) {
+      return keepMetaDataFrom(tree, _.map(tree, function(sub) {
         return lispy.substitute(subMap, sub);
-      });
+      }));
     }
     else {
-      return _.map(tree, function(sub) {
+      return keepMetaDataFrom(tree, _.map(tree, function(sub) {
         return lispy.substitute(varsToTreesMap, sub);
-      });
+      }));
     }
   }
   else if(tree.type === tokenType.identifier && _.has(varsToTreesMap, tree.string)) {
