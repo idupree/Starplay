@@ -25,6 +25,38 @@ var compositeType = {
   program: "program"//{}
 };
 
+
+function mknum(n) {
+  return { type: tokenType.number, value: n, string: (""+n) };
+}
+function binmathassert(tree, name) {
+    assert(tree.length === 3, name + " arg count");
+    assert(tree[1].type === tokenType.number, name + " first arg type");
+    assert(tree[2].type === tokenType.number, name + " second arg type");
+}
+var builtins = {
+  // just binary ops currently, not the lisp pattern..
+  '+': function(tree) {
+    //TODO we could combine all src info till we had like everything it came from involved here?
+    //TODO type/argnum checking? outsidely visible argument count?
+ //   assert(tree.type === compositeType.list);
+ //   assert(tree[0].type === tokenType.identifier);
+ //   assert(tree[0].string === '+');
+    //those were generic. now,
+//    assert(tree.length === 3);
+//    assert(tree[1].type === tokenType.number);
+//    assert(tree[2].type === tokenType.number);
+    binmathassert(tree, '+');
+    console.log(tree);
+    //floating point math?
+    return mknum(tree[1].value + tree[2].value);
+  },
+  '-': function(tree) {
+    binmathassert(tree, '-');
+    return mknum(tree[1].value - tree[2].value);
+  }
+};
+
 // following Scheme (not very accurately):
 // even [:alnum:] doesn't work in JS regexps
 var identifierChar = /[\-!$%&*+.\/:<=>?@\^_~0-9a-zA-Z]/;
@@ -210,7 +242,7 @@ $(function() {
   $code.on('change keyup', function() {
     $out.text(lispy.rep($code.val()));
   });
-  $code.val("((fn (x) x) 3)\n45");
+  $code.val("((fn (x) x) 3)\n(+ 3 4)\n45");
   $code.trigger('change');
 });
 
@@ -224,6 +256,11 @@ lispy.evaluate = function(tree) {
     }
     else if(tree.type === compositeType.program) {
       return keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
+    }
+    else if(tree.type === compositeType.list &&
+      tree[0].type === tokenType.identifier &&
+      builtins[tree[0].string] !== undefined) {
+      return builtins[tree[0].string](tree);
     }
     else {
       return tree;
