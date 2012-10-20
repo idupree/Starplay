@@ -10,19 +10,19 @@ var assert = function(b) {
   }
 };
 
-var tokenType = {
-  openParen: {},
-  closeParen: {},
-  number: {},
-  identifier: {},
-  comment: {}, //TODO
-  string: {}, //TODO
-  EOF: {}
+var tokenType = {  //strs easier for debugging, objs maybe faster
+  openParen: "openParen",//{},
+  closeParen: "closeParen",//{},
+  number: "number",//{},
+  identifier: "identifier",//{},
+  comment: "comment",//{}, //TODO
+  string: "string",//{}, //TODO
+  EOF: "EOF"//{}
 };
 
 var compositeType = {
-  list: {},
-  program: {}
+  list: "list",//{},
+  program: "program"//{}
 };
 
 // following Scheme (not very accurately):
