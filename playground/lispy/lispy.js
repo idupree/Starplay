@@ -201,6 +201,18 @@ lispy.isHeadBetaReducible = function(tree) {
     tree[0][1].type === compositeType.list;
 };
 
+lispy.rep = lispy.readEvalPrint = function(str) {
+  return lispy.crappyRender(lispy.evaluate(lispy.parseProgram(str)));
+};
+$(function() {
+  var $code = $('#code');
+  var $out = $('#out');
+  $code.on('change keyup', function() {
+    $out.text(lispy.rep($code.val()));
+  });
+  $code.val("((fn (x) x) 3)\n45");
+  $code.trigger('change');
+});
 
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
 // lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
