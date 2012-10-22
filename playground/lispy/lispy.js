@@ -56,6 +56,11 @@ var builtins = {
     return mknum(tree[1].value - tree[2].value);
   }
 };
+//what if all composite types (fn, list, assoc) got names
+//let's see
+//i'll have to set up indirection for:
+//beta-reduce
+//any builtins that operate on list, assoc
 
 // following Scheme (not very accurately):
 // even [:alnum:] doesn't work in JS regexps
