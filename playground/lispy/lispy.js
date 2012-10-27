@@ -37,21 +37,7 @@ function mkbool(b) {
     return { type: tokenType.boolean, value: false, string: "false" };
   }
 }
-function binmathassert(tree) {
-    var name = lispy.crappyRender(tree);
-    assert(tree.length === 3, name + " arg count");
-    assert(tree[1].type === tokenType.number, name + " first arg type");
-    assert(tree[2].type === tokenType.number, name + " second arg type");
-}
 var english_numbering_names = ['first', 'second', 'third'];
-function uniform_builtin_assert(tree, type, argcount) {
-    var name = tree[0].string;
-    assert(tree.length === argcount + 1, name + " arg count");
-    for(var i = 1; i != tree.length; ++i) {
-      var numberth = (i <= 3 ? english_numbering_names[i - 1] : i+"th");
-      assert(tree[i].type === type, name + " " + numberth + " arg type");
-    }
-}
 function evaluate_to_number(tree) {
   var evaled = lispy.evaluate(tree);
   assert(evaled.type === tokenType.number, lispy.crappyRender(tree) + " is not a number");
