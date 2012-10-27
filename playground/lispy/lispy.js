@@ -127,7 +127,11 @@ function tokenize(str) {
       }
       // TODO use our own not JS's hex/oct/dec number syntax?
       // TODO int vs non integer numbers?
-      var numval = parseInt(str.slice(pos, pos + numlen));
+      //var numval = parseInt(str.slice(pos, pos + numlen));
+      var numstr = str.slice(pos, pos + numlen);
+      var numval = +numstr;
+      assert(!isNaN(numval), "number interpretation of '" + numstr +
+              "' failed at line " + line + " column " + column + "!");
       // TODO forbid 12&& being a number token followed by an
       // identifier token without any spaces?  Ah by eating up
       // a whole identifier and then if it begins number-like
