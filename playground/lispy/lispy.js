@@ -29,7 +29,8 @@ var compositeType = {
 function mknum(n) {
   return { type: tokenType.number, value: n, string: (""+n) };
 }
-function binmathassert(tree, name) {
+function binmathassert(tree) {
+    var name = tree[0].string;
     assert(tree.length === 3, name + " arg count");
     assert(tree[1].type === tokenType.number, name + " first arg type");
     assert(tree[2].type === tokenType.number, name + " second arg type");
@@ -46,13 +47,13 @@ var builtins = {
 //    assert(tree.length === 3);
 //    assert(tree[1].type === tokenType.number);
 //    assert(tree[2].type === tokenType.number);
-    binmathassert(tree, '+');
+    binmathassert(tree);
     console.log(tree);
     //floating point math?
     return mknum(tree[1].value + tree[2].value);
   },
   '-': function(tree) {
-    binmathassert(tree, '-');
+    binmathassert(tree);
     return mknum(tree[1].value - tree[2].value);
   }
 };
