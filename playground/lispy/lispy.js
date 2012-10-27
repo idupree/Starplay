@@ -24,6 +24,8 @@ var tokenType = {  //strs easier for debugging, objs maybe faster
 var compositeType = {
   list: "list",//{},
   program: "program"//{}
+  //sequence []
+  //association {}
 };
 
 
@@ -306,7 +308,7 @@ lispy.betaReduceO_N = function(tree) {
   body.type = compositeType.program;
 
   var substitutions = {};
-  assert(params.length === args.length, "equal params length"); //no silly stuff!
+  assert(params.length === args.length, lispy.crappyRender(tree) + " equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
     assert(params[i].type === tokenType.identifier, "params are identifiers");
     substitutions[params[i].string] = args[i];
@@ -347,7 +349,7 @@ $(function() {
     }
     $out.text(out);
   });
-  $code.val("((fn (x) x) 3)\n(+ 3 4)\n45");
+  $code.val("((fn (x) x) 3)\n(+ 3 4)\n45\n\n((fn (x)\n  (if (= (mod x 2) 0)\n      (/ x 2)\n      (+ (* x 3) 1)))\n3)");
   $code.trigger('change');
 });
 
