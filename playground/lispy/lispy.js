@@ -97,6 +97,33 @@ var builtins = {
   'not': function(tree) {
     uniform_builtin_assert(tree, tokenType.boolean, 1);
     return mkbool(!tree[1].value);
+  },
+  //equality/lessthan ?
+  // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
+  '=': function(tree) {
+    assert(tree.length === 3, name + " arg count");
+    return mkbool(tree[1].value === tree[2].value);
+  },
+  'not=': function(tree) {
+    assert(tree.length === 3, name + " arg count");
+    return mkbool(tree[1].value !== tree[2].value);
+  },
+  // CURRENTLY ONLY ARE A THING FOR NUMBERS:
+  '<': function(tree) {
+    binmathassert(tree);
+    return mkbool(tree[1].value < tree[2].value);
+  },
+  '>': function(tree) {
+    binmathassert(tree);
+    return mkbool(tree[1].value > tree[2].value);
+  },
+  '>=': function(tree) {
+    binmathassert(tree);
+    return mkbool(tree[1].value >= tree[2].value);
+  },
+  '<=': function(tree) {
+    binmathassert(tree);
+    return mkbool(tree[1].value <= tree[2].value);
   }
 };
 //what if all composite types (fn, list, assoc) got names
