@@ -6,7 +6,7 @@ var lispy = (window || exports).lispy = {};
 
 var assert = function(b, str) {
   if(!b) {
-    throw ("assert failure! " + (""+str));
+    throw ("assert failure!  " + (""+str));
   }
 };
 
