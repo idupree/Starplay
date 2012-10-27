@@ -245,7 +245,15 @@ $(function() {
   var $code = $('#code');
   var $out = $('#out');
   $code.on('change keyup', function() {
-    $out.text(lispy.rep($code.val()));
+    var code = $code.val();
+    var out;
+    try {
+      out = lispy.rep(code);
+    }
+    catch(e) {
+      out = (""+e);
+    }
+    $out.text(out);
   });
   $code.val("((fn (x) x) 3)\n(+ 3 4)\n45");
   $code.trigger('change');
