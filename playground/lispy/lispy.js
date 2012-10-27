@@ -15,6 +15,7 @@ var tokenType = {  //strs easier for debugging, objs maybe faster
   closeParen: "closeParen",//{},
   number: "number",//{},
   identifier: "identifier",//{},
+  boolean: "boolean",//{},
   comment: "comment",//{}, //TODO
   string: "string",//{}, //TODO
   EOF: "EOF"//{}
@@ -29,11 +30,27 @@ var compositeType = {
 function mknum(n) {
   return { type: tokenType.number, value: n, string: (""+n) };
 }
+function mkbool(b) {
+  if(b) {
+    return { type: tokenType.boolean, value: true, string: "true" };
+  } else {
+    return { type: tokenType.boolean, value: false, string: "false" };
+  }
+}
 function binmathassert(tree) {
     var name = tree[0].string;
     assert(tree.length === 3, name + " arg count");
     assert(tree[1].type === tokenType.number, name + " first arg type");
     assert(tree[2].type === tokenType.number, name + " second arg type");
+}
+var english_numbering_names = ['first', 'second', 'third'];
+function uniform_builtin_assert(tree, type, argcount) {
+    var name = tree[0].string;
+    assert(tree.length === argcount + 1, name + " arg count");
+    for(var i = 1; i != tree.length; ++i) {
+      var numberth = (i <= 3 ? english_numbering_names[i - 1] : i+"th");
+      assert(tree[i].type === type, name + " " + numberth + " arg type");
+    }
 }
 var builtins = {
   // just binary ops currently, not the lisp pattern..
@@ -67,6 +84,19 @@ var builtins = {
   'mod': function(tree) {
     binmathassert(tree);
     return mknum(tree[1].value % tree[2].value);
+  },
+  //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
+  'and': function(tree) {
+    uniform_builtin_assert(tree, tokenType.boolean, 2);
+    return mkbool(tree[1].value && tree[2].value);
+  },
+  'or': function(tree) {
+    uniform_builtin_assert(tree, tokenType.boolean, 2);
+    return mkbool(tree[1].value || tree[2].value);
+  },
+  'not': function(tree) {
+    uniform_builtin_assert(tree, tokenType.boolean, 1);
+    return mkbool(!tree[1].value);
   }
 };
 //what if all composite types (fn, list, assoc) got names
@@ -142,7 +172,15 @@ function tokenize(str) {
       while(pos + idlen < str.length && identifierChar.test(str[pos + idlen])) {
         ++idlen;
       }
-      token({type: tokenType.identifier}, idlen);
+      // are true/false keywords? why? why not immutable globals? why not #t / #f?
+      var idstr = str.slice(pos, pos + idlen);
+      if(idstr === 'true') {
+        token({type: tokenType.boolean, value: true}, idlen);
+      } else if(idstr === 'false') {
+        token({type: tokenType.boolean, value: false}, idlen);
+      } else {
+        token({type: tokenType.identifier}, idlen);
+      }
     } else {
       throw ("tokenizer fail at line " + line + " column " + column + "!");
     }
@@ -152,6 +190,11 @@ function tokenize(str) {
   return result;
 }
 
+function isLiteralValueToken(tok) {
+  return tok.type === tokenType.number ||
+    tok.type === tokenType.identifier ||
+    tok.type === tokenType.boolean;
+}
 
 // Returns { parsed: list of sub-lists or tokens, endPos: n } with endPos one-after-end
 function parseList(toks, pos, type) {
@@ -162,7 +205,7 @@ function parseList(toks, pos, type) {
       var result = parseList(toks, pos + 1, compositeType.list);
       ourNest.push(result.parsed);
       pos = result.endPos;
-    } else if(toks[pos].type === tokenType.number || toks[pos].type === tokenType.identifier) {
+    } else if(isLiteralValueToken(toks[pos])) {
       ourNest.push(toks[pos]);
       pos += 1;
     } else if((toks[pos].type === tokenType.closeParen && type === compositeType.list) ||
