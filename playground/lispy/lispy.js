@@ -123,6 +123,12 @@ var builtins = {
   '<=': function(tree) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
     return mkbool(evaluate_to_number(tree[1]).value <= evaluate_to_number(tree[2]).value);
+  },
+  // IIRC 'if' needs to be a builtin in strictly evaluated languages
+  'if': function(tree) {
+    assert(tree.length === 4, lispy.crappyRender(tree) + " arg count");
+    var b = evaluate_to_bool(tree[1]).value;
+    return (b ? lispy.evaluate(tree[2]) : lispy.evaluate(tree[3]));
   }
 };
 //what if all composite types (fn, list, assoc) got names
