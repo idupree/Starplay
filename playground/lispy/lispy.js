@@ -48,7 +48,7 @@ var builtins = {
 //    assert(tree[1].type === tokenType.number);
 //    assert(tree[2].type === tokenType.number);
     binmathassert(tree);
-    console.log(tree);
+    //console.log(tree);
     //floating point math?
     return mknum(tree[1].value + tree[2].value);
   },
