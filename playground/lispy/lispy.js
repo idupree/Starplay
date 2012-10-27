@@ -55,6 +55,18 @@ var builtins = {
   '-': function(tree) {
     binmathassert(tree);
     return mknum(tree[1].value - tree[2].value);
+  },
+  '*': function(tree) {
+    binmathassert(tree);
+    return mknum(tree[1].value * tree[2].value);
+  },
+  '/': function(tree) {
+    binmathassert(tree);
+    return mknum(tree[1].value / tree[2].value);
+  },
+  'mod': function(tree) {
+    binmathassert(tree);
+    return mknum(tree[1].value % tree[2].value);
   }
 };
 //what if all composite types (fn, list, assoc) got names
