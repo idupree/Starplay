@@ -61,6 +61,14 @@ function evaluate_to_bool(tree) {
   assert(evaled.type === tokenType.boolean, lispy.crappyRender(tree) + " is not a boolean");
   return evaled;
 }
+function modulo(num, mod) {
+  assert(mod > 0, "modulo: non-positive divisor " + mod);
+  var result = num % mod;
+  if(result < 0) {
+    result += mod;
+  }
+  return result;
+}
 var builtins = {
   // just binary ops currently, not the lisp pattern..
   '+': function(tree) {
@@ -92,7 +100,7 @@ var builtins = {
   },
   'mod': function(tree) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1]).value % evaluate_to_number(tree[2]).value);
+    return mknum(modulo(evaluate_to_number(tree[1]).value, evaluate_to_number(tree[2]).value));
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
