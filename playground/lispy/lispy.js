@@ -102,6 +102,10 @@ var builtins = {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
     return mknum(modulo(evaluate_to_number(tree[1]).value, evaluate_to_number(tree[2]).value));
   },
+  'negate': function(tree) {
+    assert(tree.length === 2, lispy.crappyRender(tree) + " arg count");
+    return mknum(-evaluate_to_number(tree[1]).value);
+  },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
   //one shows we don't need to know its value (intentionally) (due to the JS
