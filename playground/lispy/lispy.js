@@ -203,7 +203,7 @@ function tokenize(str) {
       token({type: tokenType.openParen}, 1);
     } else if(str[pos] === ')') {
       token({type: tokenType.closeParen}, 1);
-    } else if(/[\-.]?[0-9]/.test(str[pos])) {
+    } else if(/^-?\.?[0-9]/.test(str.slice(pos, pos+3))) {
       var numlen = 1;
       while(pos + numlen < str.length && /[\-0-9a-zA-z_,.]/.test(str[pos + numlen])) {
         ++numlen;
