@@ -346,13 +346,18 @@ lispy.betaReduceO_N = function(tree) {
 // evaluates all beta-redexes not within a lambda (?)
 // evaluates until we have a int or lambda?
 // prevents list literals from being partly evaled?
+
+lispy.isLambdaLiteral = function(tree) {
+  return tree.type === compositeType.list
+    tree.length > 2 &&
+    tree[0].type === tokenType.identifier &&
+    tree[0].string === 'fn' &&
+    tree[1].type === compositeType.list;
+}
+
 lispy.isHeadBetaReducible = function(tree) {
   return tree.type === compositeType.list &&
-    tree.length >= 1 && tree[0].type === compositeType.list &&
-    tree[0].length > 2 &&
-    tree[0][0].type === tokenType.identifier &&
-    tree[0][0].string === 'fn' &&
-    tree[0][1].type === compositeType.list;
+    tree.length >= 1 && lispy.isLambdaLiteral(tree[0]);
 };
 
 lispy.rep = lispy.readEvalPrint = function(str) {
