@@ -39,6 +39,17 @@ function mkbool(b) {
     return { type: tokenType.boolean, value: false, string: "false" };
   }
 }
+lispy.wrapJSVal = function(v) {
+  if(_.isNumber(v)) {
+    return mknum(v);
+  }
+  else if(_.isBoolean(v)) {
+    return mkbool(v);
+  }
+  else {
+    throw 'wrapJSVal: not implemented yet: ' + v;
+  }
+}
 var english_numbering_names = ['first', 'second', 'third'];
 function evaluate_to_number(tree) {
   var evaled = lispy.evaluate(tree);
