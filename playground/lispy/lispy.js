@@ -393,7 +393,7 @@ lispy.betaReduceO_N = function(tree) {
 
 lispy.isLambdaLiteral = function(tree) {
   return tree.type === types.list &&
-    tree.length > 2 &&
+    tree.length > 1 &&
     tree[0].type === types.identifier &&
     tree[0].string === 'fn' &&
     tree[1].type === types.list;
@@ -478,8 +478,7 @@ lispy.evaluate = function(tree, env) {
     else if(tree.type === types.imperative) {
       // evaluate function-bodies in sequence:
       //   (+ 1 2) (+ 3 4)
-      assert(tree.length !== 0, "imperative things have to return something");// (TODO make a nil return default maybe?)");
-      var result = null;
+      var result = mkvoid();
       _.each(tree, function(subtree) {
         result = lispy.evaluate(subtree, env);
       });
