@@ -142,7 +142,10 @@ simATurn = (sim, isInit = false) ->
     condition = fn.activation
     if condition? and (not fn.isInit == not isInit)
       try
-        if condition.apply(turtle)
+        b = condition.apply(sim.fn.world)
+        if !_.isBoolean(b)
+          throw "condition did not return 'true' or 'false'"
+        if b
           fn.apply(sim.fn.world)
       catch error
         onDynamicUserCodeError error, 'world', fnName
@@ -151,7 +154,10 @@ simATurn = (sim, isInit = false) ->
     if condition? and (not fn.isInit == not isInit)
       for turtle in sim.turtles
         try
-          if condition.apply(turtle)
+          b = condition.apply(turtle)
+          if !_.isBoolean(b)
+            throw "condition did not return 'true' or 'false'"
+          if b
             fn.apply(turtle)
         catch error
           onDynamicUserCodeError error, 'turtle', fnName
@@ -160,7 +166,10 @@ simATurn = (sim, isInit = false) ->
     if condition? and (not fn.isInit == not isInit)
       sim.patches.each (patch) ->
         try
-          if condition.apply(patch)
+          b = condition.apply(patch)
+          if !_.isBoolean(b)
+            throw "condition did not return 'true' or 'false'"
+          if b
             fn.apply(patch)
         catch error
           onDynamicUserCodeError error, 'patch', fnName
