@@ -384,20 +384,82 @@ $(function() {
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
 // lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
 // lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
-lispy.evaluate = function(tree) {
+
+//env is a {} from identifier (as plain string) to tree.
+//It is used to look up free variables.
+//(Strictly evaluated substitution e.g. betaReduceO_N
+// cannot implement recursion or letrec,
+// so env is necessary, not just conventional.
+// It can be represented with a (let (...) ...)
+// around the to-be-evaluated tree if necessary.)
+//BUG TODO- members of 'env' cannot have any free variables.
+//I *think* pre-substituting them is fine but having a (env (...) ...)
+//primitive would be fine (like 'let' but clears the scope) (or let for
+//all the free variables also works fine) (assuming they *can* be referenced
+//thus).
+//
+//returns the evaluated version of the tree.
+lispy.evaluate = function(tree, env) {
+  if(arguments.length === 1) {
+    env = {};
+  }
   while(true) {
-    if(lispy.isHeadBetaReducible(tree)) {
+    if(tree.type === tokenType.identifier && _.has(env, tree.string)) {
+      // substitute plain identifiers from env:
+      //   ident
+      tree = env[tree.string];
+    }
+    else if(tree.type === compositeType.list && tree.length >= 1 &&
+        tree[0].type === tokenType.identifier && _.has(env, tree[0].string)) {
+      // substitute function names that are about to be called from env:
+      //   (ident ...)
+      var headEvaledTree = shallowCopyArray(tree);
+      headEvaledTree[0] = env[tree[0].string];
+      tree = headEvaledTree;
+    }
+    else if(lispy.isHeadBetaReducible(tree)) {
+      // call lambda:
+      //   ((fn (...) ...) ...)
       tree = lispy.strictBetaReduceO_N(tree);
     }
     else if(tree.type === compositeType.program) {
+      // evaluate programs / function-bodies in sequence
+      //   (+ 1 2)
+      //   (+ 3 4)
       return keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
     }
     else if(tree.type === compositeType.list &&
-      tree[0].type === tokenType.identifier &&
-      builtins[tree[0].string] !== undefined) {
+        tree[0].type === tokenType.identifier &&
+        builtins[tree[0].string] !== undefined) {
+      // evaluate builtins:
+      //   (+ 1 2)
       return builtins[tree[0].string](tree);
     }
+    else if(tree.type === compositeType.list &&
+        tree[0].type === compositeType.list) {
+      // attempt to evaluate the function part:
+      //   ((if true + -) 7 3)
+      var headEvaled = lispy.evaluate(tree[0]);
+      // TODO identity-based equality comparison is
+      // fragile here? (to prevent infinite loop
+      // trying to reduce something that we can't
+      // reduce anymore)
+      // TODO if function-calling called evaluate
+      // once on its body then there would be no
+      // infinite loop/recursion worries, right?
+      // (aside from legitimately nonterminating
+      // computations, of course).
+      if(headEvaled === tree[0]) {
+        return tree;
+      }
+      else {
+        var headEvaledTree = shallowCopyArray(tree);
+        headEvaledTree[0] = headEvaled;
+        return lispy.evaluate(headEvaledTree);//TODO just tree=, no need for recursion here
+      }
+    }
     else {
+      // No reductions found: we must be done.
       return tree;
     }
   }
@@ -407,11 +469,11 @@ function shallowCopyArray(arr) {
   return keepMetaDataFrom(arr, _.map(arr, _.identity));
 }
 
-lispy.strictBetaReduceO_N = function(tree) {
+lispy.strictBetaReduceO_N = function(tree, env) {
   assert(lispy.isHeadBetaReducible(tree), "strictBeta beta");
   var argsEvaledTree = shallowCopyArray(tree);
   for(var i = 1; i !== tree.length; ++i) {
-    argsEvaledTree[i] = lispy.evaluate(tree[i])
+    argsEvaledTree[i] = lispy.evaluate(tree[i], env)
   }
   return lispy.betaReduceO_N(argsEvaledTree);
 };
