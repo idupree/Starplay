@@ -506,11 +506,8 @@ can 'fn' be bound? that is not guarded against.
 */
 lispy.substitute = function(varsToTreesMap, tree) {
   if(tree.type === compositeType.list || tree.type === compositeType.program) {
-    if(tree[0].type === tokenType.identifier && tree[0].string === 'fn') {
-      var fn = tree;
-      assert(fn.length > 2, "substitute: fn binding is fn, 1");
-      assert(fn[1].type === compositeType.list, "substitute: fn binding is fn, 2");
-      var bindings = _.pluck(fn[1], 'string');
+    if(lispy.isLambdaLiteral(tree)) {
+      var bindings = _.pluck(tree[1], 'string');
       var subMap = _.omit(varsToTreesMap, bindings);
       return keepMetaDataFrom(tree, _.map(tree, function(sub) {
         return lispy.substitute(subMap, sub);
