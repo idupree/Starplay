@@ -58,13 +58,13 @@ lispy.wrapJSVal = function(v) {
   }
 };
 var english_numbering_names = ['first', 'second', 'third'];
-function evaluate_to_number(tree) {
-  var evaled = lispy.evaluate(tree);
+function evaluate_to_number(tree, env) {
+  var evaled = lispy.evaluate(tree, env);
   assert(evaled.type === types.number, lispy.crappyRender(tree) + " is not a number");
   return evaled;
 }
-function evaluate_to_bool(tree) {
-  var evaled = lispy.evaluate(tree);
+function evaluate_to_bool(tree, env) {
+  var evaled = lispy.evaluate(tree, env);
   assert(evaled.type === types.boolean, lispy.crappyRender(tree) + " is not a boolean");
   return evaled;
 }
@@ -78,7 +78,7 @@ function modulo(num, mod) {
 }
 var builtins = {
   // just binary ops currently, not the lisp pattern..
-  '+': function(tree) {
+  '+': function(tree, env) {
     //TODO we could combine all src info till we had like everything it came from involved here?
     //TODO type/argnum checking? outsidely visible argument count?
  //   assert(tree.type === types.list);
@@ -91,76 +91,76 @@ var builtins = {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
     //console.log(tree);
     //floating point math?
-    return mknum(evaluate_to_number(tree[1]).value + evaluate_to_number(tree[2]).value);
+    return mknum(evaluate_to_number(tree[1], env).value + evaluate_to_number(tree[2], env).value);
   },
-  '-': function(tree) {
+  '-': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1]).value - evaluate_to_number(tree[2]).value);
+    return mknum(evaluate_to_number(tree[1], env).value - evaluate_to_number(tree[2], env).value);
   },
-  '*': function(tree) {
+  '*': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1]).value * evaluate_to_number(tree[2]).value);
+    return mknum(evaluate_to_number(tree[1], env).value * evaluate_to_number(tree[2], env).value);
   },
-  '/': function(tree) {
+  '/': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1]).value / evaluate_to_number(tree[2]).value);
+    return mknum(evaluate_to_number(tree[1], env).value / evaluate_to_number(tree[2], env).value);
   },
-  'mod': function(tree) {
+  'mod': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(modulo(evaluate_to_number(tree[1]).value, evaluate_to_number(tree[2]).value));
+    return mknum(modulo(evaluate_to_number(tree[1], env).value, evaluate_to_number(tree[2], env).value));
   },
-  'negate': function(tree) {
+  'negate': function(tree, env) {
     assert(tree.length === 2, lispy.crappyRender(tree) + " arg count");
-    return mknum(-evaluate_to_number(tree[1]).value);
+    return mknum(-evaluate_to_number(tree[1], env).value);
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
   //one shows we don't need to know its value (intentionally) (due to the JS
   //short circuiting behavior here).
-  'and': function(tree) {
+  'and': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_bool(tree[1]).value && evaluate_to_bool(tree[2]).value);
+    return mkbool(evaluate_to_bool(tree[1], env).value && evaluate_to_bool(tree[2], env).value);
   },
-  'or': function(tree) {
+  'or': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_bool(tree[1]).value || evaluate_to_bool(tree[2]).value);
+    return mkbool(evaluate_to_bool(tree[1], env).value || evaluate_to_bool(tree[2], env).value);
   },
-  'not': function(tree) {
+  'not': function(tree, env) {
     assert(tree.length === 2, lispy.crappyRender(tree) + " arg count");
-    return mkbool(!evaluate_to_bool(tree[1]).value);
+    return mkbool(!evaluate_to_bool(tree[1], env).value);
   },
   //equality/lessthan ?
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
-  '=': function(tree) {
+  '=': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(lispy.evaluate(tree[1]).value === lispy.evaluate(tree[2]).value);
+    return mkbool(lispy.evaluate(tree[1], env).value === lispy.evaluate(tree[2], env).value);
   },
-  'not=': function(tree) {
+  'not=': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(lispy.evaluate(tree[1]).value !== lispy.evaluate(tree[2]).value);
+    return mkbool(lispy.evaluate(tree[1], env).value !== lispy.evaluate(tree[2], env).value);
   },
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
-  '<': function(tree) {
+  '<': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1]).value < evaluate_to_number(tree[2]).value);
+    return mkbool(evaluate_to_number(tree[1], env).value < evaluate_to_number(tree[2], env).value);
   },
-  '>': function(tree) {
+  '>': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1]).value > evaluate_to_number(tree[2]).value);
+    return mkbool(evaluate_to_number(tree[1], env).value > evaluate_to_number(tree[2], env).value);
   },
-  '>=': function(tree) {
+  '>=': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1]).value >= evaluate_to_number(tree[2]).value);
+    return mkbool(evaluate_to_number(tree[1], env).value >= evaluate_to_number(tree[2], env).value);
   },
-  '<=': function(tree) {
+  '<=': function(tree, env) {
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1]).value <= evaluate_to_number(tree[2]).value);
+    return mkbool(evaluate_to_number(tree[1], env).value <= evaluate_to_number(tree[2], env).value);
   },
   // IIRC 'if' needs to be a builtin in strictly evaluated languages
-  'if': function(tree) {
+  'if': function(tree, env) {
     assert(tree.length === 4, lispy.crappyRender(tree) + " arg count");
-    var b = evaluate_to_bool(tree[1]).value;
-    return (b ? lispy.evaluate(tree[2]) : lispy.evaluate(tree[3]));
+    var b = evaluate_to_bool(tree[1], env).value;
+    return (b ? lispy.evaluate(tree[2], env) : lispy.evaluate(tree[3], env));
   }
 };
 //what if all composite types (fn, list, assoc) got names
@@ -433,7 +433,9 @@ lispy.evaluate = function(tree, env) {
       // evaluate programs / function-bodies in sequence
       //   (+ 1 2)
       //   (+ 3 4)
-      tree = keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
+      tree = keepMetaDataFrom(tree, _.map(tree, function(subtree) {
+        return lispy.evaluate(subtree, env);
+      }));
       break;
     }
     else if(tree.type === types.list &&
@@ -448,7 +450,7 @@ lispy.evaluate = function(tree, env) {
         tree[0].type === types.list) {
       // attempt to evaluate the function part:
       //   ((if true + -) 7 3)
-      var headEvaled = lispy.evaluate(tree[0]);
+      var headEvaled = lispy.evaluate(tree[0], env);
       // TODO identity-based equality comparison is
       // fragile here? (to prevent infinite loop
       // trying to reduce something that we can't
