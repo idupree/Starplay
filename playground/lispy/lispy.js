@@ -355,7 +355,7 @@ lispy.betaReduceO_N = function(tree) {
 // prevents list literals from being partly evaled?
 
 lispy.isLambdaLiteral = function(tree) {
-  return tree.type === compositeType.list
+  return tree.type === compositeType.list &&
     tree.length > 2 &&
     tree[0].type === tokenType.identifier &&
     tree[0].string === 'fn' &&
