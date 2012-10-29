@@ -464,7 +464,7 @@ lispy.evaluate = function(tree, env) {
     else if(lispy.isHeadBetaReducible(tree)) {
       // call lambda:
       //   ((fn (...) ...) ...)
-      tree = lispy.strictBetaReduceO_N(tree);
+      tree = lispy.strictBetaReduceO_N(tree, env);
     }
     else if(tree.type === types.program) {
       // evaluate programs in sequence:
