@@ -16,6 +16,7 @@ var tokenType = {  //strs easier for debugging, objs maybe faster
   number: "number",//{},
   identifier: "identifier",//{},
   boolean: "boolean",//{},
+  unboundVariable: "unboundVariable",//{} //hmm
   comment: "comment",//{}, //TODO
   string: "string",//{}, //TODO
   EOF: "EOF"//{}
@@ -38,6 +39,12 @@ function mkbool(b) {
   } else {
     return { type: tokenType.boolean, value: false, string: "false" };
   }
+}
+function mkidentifier(s) {
+  return { type: tokenType.identifier, string: s };
+}
+function mkUnboundVariable() {
+  return { type: tokenType.unboundVariable, string: 'unbound-variable' };
 }
 lispy.wrapJSVal = function(v) {
   if(_.isNumber(v)) {
@@ -465,6 +472,7 @@ lispy.evaluate = function(tree, env) {
       break;
     }
   }
+  tree = lispy.bindFreeVars(tree, env);
   return tree;
 };
 
@@ -519,6 +527,62 @@ lispy.substitute = function(varsToTreesMap, tree) {
   }
   else { //other token
     return tree;
+  }
+};
+
+// returns a set { var: true, ... } of the free vars in tree
+// Asymptotic complexity is currently suboptimal.
+lispy.freeVarsIn = function(tree, boundVars) {
+  if(boundVars === undefined) { boundVars = {}; }
+  var freeVars = {};
+  if(tree.type === compositeType.list || tree.type === compositeType.program) {
+    if(lispy.isLambdaLiteral(tree)) {
+      var bindings = _.pluck(tree[1], 'string');
+      _.each(tree.slice(2), function(sub) {
+        _.extend(freeVars, lispy.freeVarsIn(sub, _.extend({}, bindings, boundVars)));
+      });
+    }
+    else {
+      _.each(tree, function(sub) {
+        _.extend(freeVars, lispy.freeVarsIn(sub, boundVars));
+      });
+    }
+  }
+  else if(tree.type === tokenType.identifier && !_.has(boundVars, tree.string)) {
+    freeVars[tree.string] = true;
+  }
+  return freeVars;
+};
+
+lispy.bindFreeVars = function(tree, env) {
+  // We sort this for determinacy's sake.
+  var varsToBind = _.keys(lispy.freeVarsIn(tree)).sort();
+
+  if(varsToBind.length === 0) {
+    return tree;
+  }
+  else {
+    var bindings = _.map(varsToBind, function(v) {
+      if(_.has(env, v)) {
+        return v;
+      }
+      else {
+        // hmm
+        return mkUnboundVariable();
+        // hmm could use a dummy variable here of type unbound_free_var or such
+      //  throw "Unbound free var " + v + " in " + lispy.crappyRender(tree);
+      }
+    });
+    console.log("bind", bindings);
+    //TODO implement 'let' as syntactic sugar for such immediately-applied-function
+    var paramsTree = _.map(varsToBind, function(v) { return mkidentifier(v); });
+    paramsTree.type = compositeType.list;
+    var lambdaTree = [mkidentifier('fn'), paramsTree, tree];
+    lambdaTree.type = compositeType.list;
+    var applyTree = [lambdaTree].concat(bindings);
+    applyTree.type = compositeType.list;
+    console.log('hi 7', applyTree);
+    return applyTree;
   }
 };
 
