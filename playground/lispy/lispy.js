@@ -18,7 +18,7 @@ var types = {  //strs easier for debugging, objs maybe faster
   identifier: "identifier",//{},
   boolean: "boolean",//{},
   comment: "comment",//{}, //TODO
-  string: "string",//{}, //TODO
+  string: "string",//{},
   EOF: "EOF",//{}
 
   // composite types
@@ -50,6 +50,10 @@ function mkUnboundVariable() {
 function mkfn(f) {
   return { type: types.builtinFunction, value: f, string: (""+f) };
 }
+function mkstr(s) {
+  return { type: types.string, value: s,
+           string: s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') };
+}
 lispy.wrapJSVal = function(v) {
   if(_.isNumber(v)) {
     return mknum(v);
@@ -59,6 +63,9 @@ lispy.wrapJSVal = function(v) {
   }
   else if(_.isFunction(v)) {
     return mkfn(v);
+  }
+  else if(_.isString(v)) {
+    return mkstr(v);
   }
   else {
     throw 'wrapJSVal: not implemented yet: ' + v;
@@ -217,6 +224,17 @@ function tokenize(str) {
       }
       // else assume any \r is in a \r\n combination and ignore it.
       pos += 1;
+    } else if(str[pos] === '"') {
+      var strlen = 1;
+      assert(pos + strlen < str.length, "unterminated string literal");
+      while((str[pos + strlen - 1] === '\\' || str[pos + strlen] !== '"')) {
+        ++strlen;
+        assert(pos + strlen < str.length, "unterminated string literal");
+      }
+      ++strlen;
+      var strstr = str.slice(pos + 1, pos + strlen - 1);
+      strstr = strstr.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      token({type: types.string, value: strstr}, strlen);
     } else if(str[pos] === '(') {
       token({type: types.openParen}, 1);
     } else if(str[pos] === ')') {
@@ -268,6 +286,7 @@ _.each(builtins, function(val, key) {
 function isLiteralValueToken(tok) {
   return tok.type === types.number ||
     tok.type === types.identifier ||
+    tok.type === types.string ||
     tok.type === types.boolean;
 }
 
