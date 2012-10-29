@@ -26,7 +26,8 @@ var types = {  //strs easier for debugging, objs maybe faster
   program: "program",//{}
 
   // other types
-  unboundVariable: "unboundVariable"//{} //hmm
+  unboundVariable: "unboundVariable",//{} //hmm
+  builtinFunction: "builtinFunction"//{},
 };
 
 
@@ -46,12 +47,18 @@ function mkidentifier(s) {
 function mkUnboundVariable() {
   return { type: types.unboundVariable, string: 'unbound-variable' };
 }
+function mkfn(f) {
+  return { type: types.builtinFunction, value: f, string: (""+f) };
+}
 lispy.wrapJSVal = function(v) {
   if(_.isNumber(v)) {
     return mknum(v);
   }
   else if(_.isBoolean(v)) {
     return mkbool(v);
+  }
+  else if(_.isFunction(v)) {
+    return mkfn(v);
   }
   else {
     throw 'wrapJSVal: not implemented yet: ' + v;
@@ -253,6 +260,10 @@ function tokenize(str) {
   //console.log(result);
   return result;
 }
+var builtinsAsLispyThings = {};
+_.each(builtins, function(val, key) {
+  builtinsAsLispyThings[key] = lispy.wrapJSVal(val);
+});
 
 function isLiteralValueToken(tok) {
   return tok.type === types.number ||
@@ -368,7 +379,7 @@ lispy.isHeadBetaReducible = function(tree) {
 };
 
 lispy.rep = lispy.readEvalPrint = function(str) {
-  return lispy.crappyRender(lispy.evaluate(lispy.parseProgram(str)));
+  return lispy.crappyRender(lispy.evaluate(lispy.parseProgram(str), builtinsAsLispyThings));
 };
 $(function() {
   var $code = $('#code');
@@ -439,11 +450,10 @@ lispy.evaluate = function(tree, env) {
       break;
     }
     else if(tree.type === types.list &&
-        tree[0].type === types.identifier &&
-        builtins[tree[0].string] !== undefined) {
+        tree[0].type === types.builtinFunction) {
       // evaluate builtins:
       //   (+ 1 2)
-      tree = builtins[tree[0].string](tree);
+      tree = tree[0].value(tree, env);
       break;
     }
     else if(tree.type === types.list &&
@@ -486,7 +496,7 @@ lispy.strictBetaReduceO_N = function(tree, env) {
   assert(lispy.isHeadBetaReducible(tree), "strictBeta beta");
   var argsEvaledTree = shallowCopyArray(tree);
   for(var i = 1; i !== tree.length; ++i) {
-    argsEvaledTree[i] = lispy.evaluate(tree[i], env)
+    argsEvaledTree[i] = lispy.evaluate(tree[i], env);
   }
   return lispy.betaReduceO_N(argsEvaledTree);
 };
