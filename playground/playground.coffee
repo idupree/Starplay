@@ -268,13 +268,19 @@ lispyeval = (lispyscript, env) ->
   return ->
     lispyvals = lispy.evaluate parsed, _.extend({
       '@': lispy.wrapJSVal (tree, env) =>
-        this[tree[1].string](_.map(tree.slice(2), (v)->lispy.evaluate(v).value)...) #but jsval vs. regular val!!! Which expects which?
+        member = this[tree[1].string]
+        if _.isFunction member
+          member.apply(this, _.map(tree.slice(2), (v)->lispy.evaluate(v).value)) #but jsval vs. regular val!!! Which expects which?
+        else
+          if tree.length > 2
+            throw "arguments given to a non-function member"
+          member
         #aha the ??? is becaue this '@' fn value is created every time, per obj.
       }, lispy.builtinsAsLispyThings, env)
-    console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
+    #console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
     if lispyvals.length > 0
       lispyval = lispyvals[lispyvals.length - 1]
-      console.log 'heh2', lispyval, lispy.crappyRender(lispyval)
+      #console.log 'heh2', lispyval, lispy.crappyRender(lispyval)
       if _.has lispyval, 'value'
         return lispyval.value
     return null
