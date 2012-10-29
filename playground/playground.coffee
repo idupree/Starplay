@@ -56,6 +56,7 @@ rand = {
 sim = {}
 
 coffeeenv = sim: sim, tau: tau, modulo: modulo
+lispyenv = tau: lispy.wrapJSVal tau
 
 #hack debug help
 window.StarPlay.sim = sim
@@ -249,6 +250,22 @@ coffeeeval = (coffeescript, env, thisVal) ->
     throw error
   return evalScriptInEnv js, env, thisVal
 
+# It might be nice to allow blocks with arguments too somehow,
+# without requiring (fn () ...) on everything, somehow, hm
+lispyeval = (lispyscript, env) ->
+  parsed = lispy.parseProgram lispyscript
+  return ->
+    lispy.evaluate parsed, _.extend({
+      '@': lispy.wrapJSVal (tree, env) =>
+        this[tree[1].string](_.map(tree.slice(2), (v)->lispy.evaluate(v).value)...) #but jsval vs. regular val!!! Which expects which?
+        #aha the ??? is becaue this '@' fn value is created every time, per obj.
+      }, env)
+
+userScriptEval = (script, thisVal) ->
+  if script[0] == '('
+    return lispyeval script, lispyenv
+  else
+    return coffeeeval script, coffeeenv, thisVal
 
 #TODO use http://ace.ajax.org/ for code editor/syntax hilight etc.
 
@@ -300,10 +317,10 @@ class TurtleFn extends Backbone.Model
   updateSimCode: ->
     delete sim.fn[@previous 'type'][@previous 'name']
     try
-      fn = sim.fn[@get 'type'][@get 'name'] = coffeeeval @get('implementation'), coffeeenv
+      fn = sim.fn[@get 'type'][@get 'name'] = userScriptEval @get('implementation')
       fn.type = @get 'type'
       fn.isInit = @get 'isInit'
-      fn.activation = coffeeeval @get('activation'), coffeeenv if @get('activation')?
+      fn.activation = userScriptEval @get('activation') if @get('activation')?
       @set 'error': null
     catch error
       @set 'error': error.message
