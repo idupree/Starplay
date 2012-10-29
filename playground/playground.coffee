@@ -81,6 +81,8 @@ sim.fn.turtle =
   rotateRight: (amount = tau / 4) ->
     @heading = modulo (@heading - amount), tau
     @
+  patchHere: ->
+    sim.patches[Math.floor(@x)][Math.floor(@y)]
 
 
 sim.fn.patch = {}
@@ -433,7 +435,7 @@ $ ->
       @rotateLeft tau / 16 * (Math.random() - 0.5)
       @forward 0.25""",
     """-> @type == 'crazy'"""
-  newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
+  #newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
   newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
   
   newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
