@@ -270,11 +270,15 @@ lispyeval = (lispyscript, env) ->
       '@': lispy.wrapJSVal (tree, env) =>
         member = this[tree[1].string]
         if _.isFunction member
-          member.apply(this, _.map(tree.slice(2), (v)->lispy.evaluate(v).value)) #but jsval vs. regular val!!! Which expects which?
+          result = member.apply(this, _.map(tree.slice(2), (v)->lispy.evaluate(v).value)) #but jsval vs. regular val!!! Which expects which?
         else
           if tree.length > 2
             throw "arguments given to a non-function member"
-          member
+          result = member
+        if _.isObject result #hack to avoid those self-returning methods causing trouble TODO
+          return lispy.mkvoid()
+        else
+          return lispy.wrapJSVal result
         #aha the ??? is becaue this '@' fn value is created every time, per obj.
       }, lispy.builtinsAsLispyThings, env)
     #console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
