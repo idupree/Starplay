@@ -454,7 +454,7 @@ $ ->
 
   newFn = (type, name, implementation, activation, isInit = false) ->
     thisPageTurtleFnList.create type: type, name: name, implementation: implementation, activation: activation, isInit: isInit
-  newFn 'turtle', 'speed', '(@ forward (- 5 4))', "-> @type == 'bullet'"
+  newFn 'turtle', 'speed', '(@ forward (- 5 4))', '(= (@ type) "bullet")'
   newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
   newFn 'turtle', 'wobble', """
     ->
