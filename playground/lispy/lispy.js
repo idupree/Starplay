@@ -27,6 +27,9 @@ var types = {  //strs easier for debugging, objs maybe faster
   program: "program",//{}
   imperative: "imperative",//{} //function bodies become this
 
+  array: "array",//{},
+  dict: "dict",//{}, //SOMEWHAT TODO
+
   // other types
   unboundVariable: "unboundVariable",//{} //hmm
   builtinFunction: "builtinFunction"//{},
@@ -58,6 +61,14 @@ function mkfn(f) {
 function mkstr(s) {
   return { type: types.string, value: s,
            string: s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') };
+}
+// how to detect WHETHER an 'object' is a lispy object: i should put a field in.
+// *should* arrays have a string rep? PROBABLY NOT
+function mkarray(a) {
+  return { type: types.array, value: a }
+}
+function mkdict(d) {
+  return { type: types.dict, value: d };
 }
 lispy.wrapJSVal = function(v) {
   if(_.isNumber(v)) {
@@ -180,7 +191,30 @@ var builtins = {
     assert(tree.length === 4, lispy.crappyRender(tree) + " arg count");
     var b = evaluate_to_bool(tree[1], env).value;
     return (b ? lispy.evaluate(tree[2], env) : lispy.evaluate(tree[3], env));
+  },
+  // these create
+  //'array'
+  //'dict'
+  //(mutable? then they'd need a name and stuff)
+  'array': function(tree, env) {
+    var result = [];
+    _.each(tree.slice(1), function(v) {
+      result.push(lispy.evaluate(v, env));
+    });
+    return mkarray(result);
   }
+  /*'dict': function(tree, env) {
+    assert(tree.length % 2 === 1, lispy.crappyRender(tree) + " arg count is even");
+    var result = {};
+    var key = null;
+    _.each(tree, function(v) {
+      if(key) {
+        result[key]//...wait JS only has strings for keys. hmm.
+      }
+      result.push(lispy.evaluate(v, env));
+    });
+    return mkarray(result);
+  }*/
 };
 //what if all composite types (fn, list, assoc) got names
 //let's see
@@ -646,6 +680,26 @@ lispy.crappyRender = function(tree) {
         result += ' ';
       }
       result += lispy.crappyRender(subtree);
+    });
+    result += ')';
+    return result;
+  }
+  else if(tree.type === types.array) {
+    result = '(array';
+    _.each(tree.value, function(subtree, index) {
+      result += ' ';
+      result += lispy.crappyRender(subtree);
+    });
+    result += ')';
+    return result;
+  }
+  else if(tree.type === types.dict) {
+    result = '(dict';
+    _.each(tree.value, function(subtreeVal, subtreeKey, index) {
+      result += ' ';
+      result += lispy.crappyRender(subtreeKey);
+      result += ' ';
+      result += lispy.crappyRender(subtreeVal);
     });
     result += ')';
     return result;
