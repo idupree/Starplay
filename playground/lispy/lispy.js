@@ -24,6 +24,7 @@ var types = {  //strs easier for debugging, objs maybe faster
   // composite types
   list: "list",//{},
   program: "program",//{}
+  imperative: "imperative",//{} //function bodies become this
 
   // other types
   unboundVariable: "unboundVariable",//{} //hmm
@@ -365,7 +366,7 @@ lispy.betaReduceO_N = function(tree) {
   //assert(fn[1].type === types.list);
   var params = fn[1];
   var body = keepMetaDataFrom(fn, fn.slice(2));
-  body.type = types.program;
+  body.type = types.imperative;
 
   var substitutions = {};
   assert(params.length === args.length, lispy.crappyRender(tree) + " equal params length"); //no silly stuff!
@@ -460,12 +461,23 @@ lispy.evaluate = function(tree, env) {
       tree = lispy.strictBetaReduceO_N(tree);
     }
     else if(tree.type === types.program) {
-      // evaluate programs / function-bodies in sequence
+      // evaluate programs in sequence:
       //   (+ 1 2)
       //   (+ 3 4)
       tree = keepMetaDataFrom(tree, _.map(tree, function(subtree) {
         return lispy.evaluate(subtree, env);
       }));
+      break;
+    }
+    else if(tree.type === types.imperative) {
+      // evaluate function-bodies in sequence:
+      //   (+ 1 2) (+ 3 4)
+      assert(tree.length !== 0, "imperative things have to return something");// (TODO make a nil return default maybe?)");
+      var result = null;
+      _.each(tree, function(subtree) {
+        result = lispy.evaluate(subtree, env);
+      });
+      tree = result;
       break;
     }
     else if(tree.type === types.list &&
@@ -536,7 +548,7 @@ of some tokens - we intend that they are never mutated by any code
 can 'fn' be bound? that is not guarded against.
 */
 lispy.substitute = function(varsToTreesMap, tree) {
-  if(tree.type === types.list || tree.type === types.program) {
+  if(tree.type === types.list || tree.type === types.program || tree.type === types.imperative) {
     if(lispy.isLambdaLiteral(tree)) {
       var bindings = _.pluck(tree[1], 'string');
       var subMap = _.omit(varsToTreesMap, bindings);
@@ -563,7 +575,7 @@ lispy.substitute = function(varsToTreesMap, tree) {
 lispy.freeVarsIn = function(tree, boundVars) {
   if(boundVars === undefined) { boundVars = {}; }
   var freeVars = {};
-  if(tree.type === types.list || tree.type === types.program) {
+  if(tree.type === types.list || tree.type === types.program || tree.type === types.imperative) {
     if(lispy.isLambdaLiteral(tree)) {
       var bindings = _.pluck(tree[1], 'string');
       _.each(tree.slice(2), function(sub) {
@@ -614,7 +626,7 @@ lispy.bindFreeVars = function(tree, env) {
 
 lispy.crappyRender = function(tree) {
   var result;
-  if(tree.type === types.program) {
+  if(tree.type === types.program || tree.type === types.imperative) {
     result = '';
     _.each(tree, function(subtree) {
       result += lispy.crappyRender(subtree);
