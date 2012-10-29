@@ -426,14 +426,16 @@ lispy.evaluate = function(tree, env) {
       // evaluate programs / function-bodies in sequence
       //   (+ 1 2)
       //   (+ 3 4)
-      return keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
+      tree = keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
+      break;
     }
     else if(tree.type === compositeType.list &&
         tree[0].type === tokenType.identifier &&
         builtins[tree[0].string] !== undefined) {
       // evaluate builtins:
       //   (+ 1 2)
-      return builtins[tree[0].string](tree);
+      tree = builtins[tree[0].string](tree);
+      break;
     }
     else if(tree.type === compositeType.list &&
         tree[0].type === compositeType.list) {
@@ -450,19 +452,20 @@ lispy.evaluate = function(tree, env) {
       // (aside from legitimately nonterminating
       // computations, of course).
       if(headEvaled === tree[0]) {
-        return tree;
+        break;
       }
       else {
         var headEvaledTree = shallowCopyArray(tree);
         headEvaledTree[0] = headEvaled;
-        return lispy.evaluate(headEvaledTree);//TODO just tree=, no need for recursion here
+        tree = headEvaledTree;
       }
     }
     else {
       // No reductions found: we must be done.
-      return tree;
+      break;
     }
   }
+  return tree;
 };
 
 function shallowCopyArray(arr) {
