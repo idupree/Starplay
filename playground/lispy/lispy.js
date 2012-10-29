@@ -283,6 +283,8 @@ var builtinsAsLispyThings = {};
 _.each(builtins, function(val, key) {
   builtinsAsLispyThings[key] = lispy.wrapJSVal(val);
 });
+lispy.builtins = builtins;
+lispy.builtinsAsLispyThings = builtinsAsLispyThings;
 
 function isLiteralValueToken(tok) {
   return tok.type === types.number ||

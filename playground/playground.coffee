@@ -266,11 +266,18 @@ coffeeeval = (coffeescript, env, thisVal) ->
 lispyeval = (lispyscript, env) ->
   parsed = lispy.parseProgram lispyscript
   return ->
-    lispy.evaluate parsed, _.extend({
+    lispyvals = lispy.evaluate parsed, _.extend({
       '@': lispy.wrapJSVal (tree, env) =>
         this[tree[1].string](_.map(tree.slice(2), (v)->lispy.evaluate(v).value)...) #but jsval vs. regular val!!! Which expects which?
         #aha the ??? is becaue this '@' fn value is created every time, per obj.
-      }, env)
+      }, lispy.builtinsAsLispyThings, env)
+    console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
+    if lispyvals.length > 0
+      lispyval = lispyvals[lispyvals.length - 1]
+      console.log 'heh2', lispyval, lispy.crappyRender(lispyval)
+      if _.has lispyval, 'value'
+        return lispyval.value
+    return null
 
 userScriptEval = (script, thisVal) ->
   if script[0] == '('
