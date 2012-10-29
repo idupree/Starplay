@@ -56,7 +56,7 @@ lispy.wrapJSVal = function(v) {
   else {
     throw 'wrapJSVal: not implemented yet: ' + v;
   }
-}
+};
 var english_numbering_names = ['first', 'second', 'third'];
 function evaluate_to_number(tree) {
   var evaled = lispy.evaluate(tree);
@@ -360,7 +360,7 @@ lispy.isLambdaLiteral = function(tree) {
     tree[0].type === types.identifier &&
     tree[0].string === 'fn' &&
     tree[1].type === types.list;
-}
+};
 
 lispy.isHeadBetaReducible = function(tree) {
   return tree.type === types.list &&
@@ -570,7 +570,6 @@ lispy.bindFreeVars = function(tree, env) {
       //  throw "Unbound free var " + v + " in " + lispy.crappyRender(tree);
       }
     });
-    console.log("bind", bindings);
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
     var paramsTree = _.map(varsToBind, function(v) { return mkidentifier(v); });
     paramsTree.type = types.list;
@@ -578,7 +577,6 @@ lispy.bindFreeVars = function(tree, env) {
     lambdaTree.type = types.list;
     var applyTree = [lambdaTree].concat(bindings);
     applyTree.type = types.list;
-    console.log('hi 7', applyTree);
     return applyTree;
   }
 };
