@@ -10,41 +10,41 @@ var assert = function(b, str) {
   }
 };
 
-var tokenType = {  //strs easier for debugging, objs maybe faster
+var types = {  //strs easier for debugging, objs maybe faster
+  // token types
   openParen: "openParen",//{},
   closeParen: "closeParen",//{},
   number: "number",//{},
   identifier: "identifier",//{},
   boolean: "boolean",//{},
-  unboundVariable: "unboundVariable",//{} //hmm
   comment: "comment",//{}, //TODO
   string: "string",//{}, //TODO
-  EOF: "EOF"//{}
-};
+  EOF: "EOF",//{}
 
-var compositeType = {
+  // composite types
   list: "list",//{},
-  program: "program"//{}
-  //sequence []
-  //association {}
+  program: "program",//{}
+
+  // other types
+  unboundVariable: "unboundVariable"//{} //hmm
 };
 
 
 function mknum(n) {
-  return { type: tokenType.number, value: n, string: (""+n) };
+  return { type: types.number, value: n, string: (""+n) };
 }
 function mkbool(b) {
   if(b) {
-    return { type: tokenType.boolean, value: true, string: "true" };
+    return { type: types.boolean, value: true, string: "true" };
   } else {
-    return { type: tokenType.boolean, value: false, string: "false" };
+    return { type: types.boolean, value: false, string: "false" };
   }
 }
 function mkidentifier(s) {
-  return { type: tokenType.identifier, string: s };
+  return { type: types.identifier, string: s };
 }
 function mkUnboundVariable() {
-  return { type: tokenType.unboundVariable, string: 'unbound-variable' };
+  return { type: types.unboundVariable, string: 'unbound-variable' };
 }
 lispy.wrapJSVal = function(v) {
   if(_.isNumber(v)) {
@@ -60,12 +60,12 @@ lispy.wrapJSVal = function(v) {
 var english_numbering_names = ['first', 'second', 'third'];
 function evaluate_to_number(tree) {
   var evaled = lispy.evaluate(tree);
-  assert(evaled.type === tokenType.number, lispy.crappyRender(tree) + " is not a number");
+  assert(evaled.type === types.number, lispy.crappyRender(tree) + " is not a number");
   return evaled;
 }
 function evaluate_to_bool(tree) {
   var evaled = lispy.evaluate(tree);
-  assert(evaled.type === tokenType.boolean, lispy.crappyRender(tree) + " is not a boolean");
+  assert(evaled.type === types.boolean, lispy.crappyRender(tree) + " is not a boolean");
   return evaled;
 }
 function modulo(num, mod) {
@@ -81,13 +81,13 @@ var builtins = {
   '+': function(tree) {
     //TODO we could combine all src info till we had like everything it came from involved here?
     //TODO type/argnum checking? outsidely visible argument count?
- //   assert(tree.type === compositeType.list);
- //   assert(tree[0].type === tokenType.identifier);
+ //   assert(tree.type === types.list);
+ //   assert(tree[0].type === types.identifier);
  //   assert(tree[0].string === '+');
     //those were generic. now,
 //    assert(tree.length === 3);
-//    assert(tree[1].type === tokenType.number);
-//    assert(tree[2].type === tokenType.number);
+//    assert(tree[1].type === types.number);
+//    assert(tree[2].type === types.number);
     assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
     //console.log(tree);
     //floating point math?
@@ -211,9 +211,9 @@ function tokenize(str) {
       // else assume any \r is in a \r\n combination and ignore it.
       pos += 1;
     } else if(str[pos] === '(') {
-      token({type: tokenType.openParen}, 1);
+      token({type: types.openParen}, 1);
     } else if(str[pos] === ')') {
-      token({type: tokenType.closeParen}, 1);
+      token({type: types.closeParen}, 1);
     } else if(/^-?\.?[0-9]/.test(str.slice(pos, pos+3))) {
       var numlen = 1;
       while(pos + numlen < str.length && /[\-0-9a-zA-z_,.]/.test(str[pos + numlen])) {
@@ -230,7 +230,7 @@ function tokenize(str) {
       // identifier token without any spaces?  Ah by eating up
       // a whole identifier and then if it begins number-like
       // then make it a number or fail.
-      token({type: tokenType.number, value: numval}, numlen);
+      token({type: types.number, value: numval}, numlen);
     } else if(identifierChar.test(str[pos])) {
       var idlen = 1;
       while(pos + idlen < str.length && identifierChar.test(str[pos + idlen])) {
@@ -239,25 +239,25 @@ function tokenize(str) {
       // are true/false keywords? why? why not immutable globals? why not #t / #f?
       var idstr = str.slice(pos, pos + idlen);
       if(idstr === 'true') {
-        token({type: tokenType.boolean, value: true}, idlen);
+        token({type: types.boolean, value: true}, idlen);
       } else if(idstr === 'false') {
-        token({type: tokenType.boolean, value: false}, idlen);
+        token({type: types.boolean, value: false}, idlen);
       } else {
-        token({type: tokenType.identifier}, idlen);
+        token({type: types.identifier}, idlen);
       }
     } else {
       throw ("tokenizer fail at line " + line + " column " + column + "!");
     }
   }
-  token({type: tokenType.EOF}, 0);
+  token({type: types.EOF}, 0);
   //console.log(result);
   return result;
 }
 
 function isLiteralValueToken(tok) {
-  return tok.type === tokenType.number ||
-    tok.type === tokenType.identifier ||
-    tok.type === tokenType.boolean;
+  return tok.type === types.number ||
+    tok.type === types.identifier ||
+    tok.type === types.boolean;
 }
 
 // Returns { parsed: list of sub-lists or tokens, endPos: n } with endPos one-after-end
@@ -265,15 +265,15 @@ function parseList(toks, pos, type) {
   var ourNest = [];
   ourNest.type = type;
   while(true) {
-    if(toks[pos].type === tokenType.openParen) {
-      var result = parseList(toks, pos + 1, compositeType.list);
+    if(toks[pos].type === types.openParen) {
+      var result = parseList(toks, pos + 1, types.list);
       ourNest.push(result.parsed);
       pos = result.endPos;
     } else if(isLiteralValueToken(toks[pos])) {
       ourNest.push(toks[pos]);
       pos += 1;
-    } else if((toks[pos].type === tokenType.closeParen && type === compositeType.list) ||
-              (toks[pos].type === tokenType.EOF && type === compositeType.program)) {
+    } else if((toks[pos].type === types.closeParen && type === types.list) ||
+              (toks[pos].type === types.EOF && type === types.program)) {
       pos += 1;
       return { parsed: ourNest, endPos: pos };
     } else {
@@ -285,7 +285,7 @@ function parseList(toks, pos, type) {
 
 // parseProgram : string -> list/token structure
 lispy.parseProgram = function(str) {
-  return parseList(tokenize(str), 0, compositeType.program).parsed;
+  return parseList(tokenize(str), 0, types.program).parsed;
 };
 
 // parseProgram ""
@@ -325,22 +325,22 @@ function keepMetaDataFrom(tree, arrayTree) {
 lispy.betaReduceO_N = function(tree) {
   // pattern-match ((fn (params...) body...) args...)
   assert(lispy.isHeadBetaReducible(tree), "beta beta");
-  //assert(tree.type === compositeType.list);
+  //assert(tree.type === types.list);
   //assert(tree.length >= 1);
   var fn = tree[0];
   var args = tree.slice(1);
   //assert(fn.length > 2);
-  //assert(fn[0].type === tokenType.identifier);
+  //assert(fn[0].type === types.identifier);
   //assert(fn[0].string === 'fn');
-  //assert(fn[1].type === compositeType.list);
+  //assert(fn[1].type === types.list);
   var params = fn[1];
   var body = keepMetaDataFrom(fn, fn.slice(2));
-  body.type = compositeType.program;
+  body.type = types.program;
 
   var substitutions = {};
   assert(params.length === args.length, lispy.crappyRender(tree) + " equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
-    assert(params[i].type === tokenType.identifier, "params are identifiers");
+    assert(params[i].type === types.identifier, "params are identifiers");
     substitutions[params[i].string] = args[i];
   }
 
@@ -355,15 +355,15 @@ lispy.betaReduceO_N = function(tree) {
 // prevents list literals from being partly evaled?
 
 lispy.isLambdaLiteral = function(tree) {
-  return tree.type === compositeType.list &&
+  return tree.type === types.list &&
     tree.length > 2 &&
-    tree[0].type === tokenType.identifier &&
+    tree[0].type === types.identifier &&
     tree[0].string === 'fn' &&
-    tree[1].type === compositeType.list;
+    tree[1].type === types.list;
 }
 
 lispy.isHeadBetaReducible = function(tree) {
-  return tree.type === compositeType.list &&
+  return tree.type === types.list &&
     tree.length >= 1 && lispy.isLambdaLiteral(tree[0]);
 };
 
@@ -411,13 +411,13 @@ lispy.evaluate = function(tree, env) {
     env = {};
   }
   while(true) {
-    if(tree.type === tokenType.identifier && _.has(env, tree.string)) {
+    if(tree.type === types.identifier && _.has(env, tree.string)) {
       // substitute plain identifiers from env:
       //   ident
       tree = env[tree.string];
     }
-    else if(tree.type === compositeType.list && tree.length >= 1 &&
-        tree[0].type === tokenType.identifier && _.has(env, tree[0].string)) {
+    else if(tree.type === types.list && tree.length >= 1 &&
+        tree[0].type === types.identifier && _.has(env, tree[0].string)) {
       // substitute function names that are about to be called from env:
       //   (ident ...)
       var headEvaledTree = shallowCopyArray(tree);
@@ -429,23 +429,23 @@ lispy.evaluate = function(tree, env) {
       //   ((fn (...) ...) ...)
       tree = lispy.strictBetaReduceO_N(tree);
     }
-    else if(tree.type === compositeType.program) {
+    else if(tree.type === types.program) {
       // evaluate programs / function-bodies in sequence
       //   (+ 1 2)
       //   (+ 3 4)
       tree = keepMetaDataFrom(tree, _.map(tree, lispy.evaluate));
       break;
     }
-    else if(tree.type === compositeType.list &&
-        tree[0].type === tokenType.identifier &&
+    else if(tree.type === types.list &&
+        tree[0].type === types.identifier &&
         builtins[tree[0].string] !== undefined) {
       // evaluate builtins:
       //   (+ 1 2)
       tree = builtins[tree[0].string](tree);
       break;
     }
-    else if(tree.type === compositeType.list &&
-        tree[0].type === compositeType.list) {
+    else if(tree.type === types.list &&
+        tree[0].type === types.list) {
       // attempt to evaluate the function part:
       //   ((if true + -) 7 3)
       var headEvaled = lispy.evaluate(tree[0]);
@@ -491,12 +491,12 @@ lispy.strictBetaReduceO_N = function(tree, env) {
 
 /*
   substitute({
-    'foo': { type: tokenType.number, value: 3, string: "3", ... },
-    'bar': { type: tokenType.identifier, string: "something", ... },
+    'foo': { type: types.number, value: 3, string: "3", ... },
+    'bar': { type: types.identifier, string: "something", ... },
   },
-  [ { type: tokenType.identifier, string: "+", ... },
-    { type: tokenType.identifier, string: "foo", ... },
-    { type: tokenType.number, value: 7, string: "7", ... }
+  [ { type: types.identifier, string: "+", ... },
+    { type: types.identifier, string: "foo", ... },
+    { type: types.number, value: 7, string: "7", ... }
   ])
 
 wait, does it mutate or return a new tree? return a new tree. there might be sharing
@@ -505,7 +505,7 @@ of some tokens - we intend that they are never mutated by any code
 can 'fn' be bound? that is not guarded against.
 */
 lispy.substitute = function(varsToTreesMap, tree) {
-  if(tree.type === compositeType.list || tree.type === compositeType.program) {
+  if(tree.type === types.list || tree.type === types.program) {
     if(lispy.isLambdaLiteral(tree)) {
       var bindings = _.pluck(tree[1], 'string');
       var subMap = _.omit(varsToTreesMap, bindings);
@@ -519,7 +519,7 @@ lispy.substitute = function(varsToTreesMap, tree) {
       }));
     }
   }
-  else if(tree.type === tokenType.identifier && _.has(varsToTreesMap, tree.string)) {
+  else if(tree.type === types.identifier && _.has(varsToTreesMap, tree.string)) {
     return varsToTreesMap[tree.string];
   }
   else { //other token
@@ -532,7 +532,7 @@ lispy.substitute = function(varsToTreesMap, tree) {
 lispy.freeVarsIn = function(tree, boundVars) {
   if(boundVars === undefined) { boundVars = {}; }
   var freeVars = {};
-  if(tree.type === compositeType.list || tree.type === compositeType.program) {
+  if(tree.type === types.list || tree.type === types.program) {
     if(lispy.isLambdaLiteral(tree)) {
       var bindings = _.pluck(tree[1], 'string');
       _.each(tree.slice(2), function(sub) {
@@ -545,7 +545,7 @@ lispy.freeVarsIn = function(tree, boundVars) {
       });
     }
   }
-  else if(tree.type === tokenType.identifier && !_.has(boundVars, tree.string)) {
+  else if(tree.type === types.identifier && !_.has(boundVars, tree.string)) {
     freeVars[tree.string] = true;
   }
   return freeVars;
@@ -573,11 +573,11 @@ lispy.bindFreeVars = function(tree, env) {
     console.log("bind", bindings);
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
     var paramsTree = _.map(varsToBind, function(v) { return mkidentifier(v); });
-    paramsTree.type = compositeType.list;
+    paramsTree.type = types.list;
     var lambdaTree = [mkidentifier('fn'), paramsTree, tree];
-    lambdaTree.type = compositeType.list;
+    lambdaTree.type = types.list;
     var applyTree = [lambdaTree].concat(bindings);
-    applyTree.type = compositeType.list;
+    applyTree.type = types.list;
     console.log('hi 7', applyTree);
     return applyTree;
   }
@@ -585,7 +585,7 @@ lispy.bindFreeVars = function(tree, env) {
 
 lispy.crappyRender = function(tree) {
   var result;
-  if(tree.type === compositeType.program) {
+  if(tree.type === types.program) {
     result = '';
     _.each(tree, function(subtree) {
       result += lispy.crappyRender(subtree);
@@ -593,7 +593,7 @@ lispy.crappyRender = function(tree) {
     });
     return result;
   }
-  else if(tree.type === compositeType.list) {
+  else if(tree.type === types.list) {
     result = '(';
     _.each(tree, function(subtree, index) {
       if(index !== 0) {
