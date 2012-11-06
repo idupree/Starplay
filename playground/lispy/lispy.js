@@ -19,7 +19,7 @@ var types = {  //strs easier for debugging, objs maybe faster
   boolean: "boolean",//{},
   comment: "comment",//{}, //TODO
   string: "string",//{},
-  void: "void",//{},
+  _void: "_void",//{}, //In JS, void is a keyword, so avoid it
   EOF: "EOF",//{}
 
   // composite types
@@ -37,7 +37,7 @@ var types = {  //strs easier for debugging, objs maybe faster
 
 
 var mkvoid = lispy.mkvoid = function() {
-  return { type: types.void, string: "void" };
+  return { type: types._void, string: "void" };
 };
 function mknum(n) {
   return { type: types.number, value: n, string: (""+n) };
