@@ -36,9 +36,9 @@ var types = {  //strs easier for debugging, objs maybe faster
 };
 
 
-var mkvoid = lispy.mkvoid = function(n) {
+var mkvoid = lispy.mkvoid = function() {
   return { type: types.void, string: "void" };
-}
+};
 function mknum(n) {
   return { type: types.number, value: n, string: (""+n) };
 }
@@ -65,7 +65,7 @@ function mkstr(s) {
 // how to detect WHETHER an 'object' is a lispy object: i should put a field in.
 // *should* arrays have a string rep? PROBABLY NOT
 function mkarray(a) {
-  return { type: types.array, value: a }
+  return { type: types.array, value: a };
 }
 function mkdict(d) {
   return { type: types.dict, value: d };
@@ -686,7 +686,7 @@ lispy.crappyRender = function(tree) {
   }
   else if(tree.type === types.array) {
     result = '(array';
-    _.each(tree.value, function(subtree, index) {
+    _.each(tree.value, function(subtree) {
       result += ' ';
       result += lispy.crappyRender(subtree);
     });
@@ -695,7 +695,7 @@ lispy.crappyRender = function(tree) {
   }
   else if(tree.type === types.dict) {
     result = '(dict';
-    _.each(tree.value, function(subtreeVal, subtreeKey, index) {
+    _.each(tree.value, function(subtreeVal, subtreeKey) {
       result += ' ';
       result += lispy.crappyRender(subtreeKey);
       result += ' ';
