@@ -1,4 +1,8 @@
 
+# Copyright Isaac Dupree, MIT-licensed.
+
+# This file implements a simulation inspired by StarLogo
+# customizable in CoffeeScript and/or a custom Lisp-inspired language.
 
 # Utility
 
