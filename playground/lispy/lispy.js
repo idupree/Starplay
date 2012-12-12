@@ -1,4 +1,9 @@
 
+// Copyright Isaac Dupree, MIT-licensed.
+
+// This file implements a simple lisp-like language
+// with symbolic evaluation.
+
 (function() {
 "use strict";
 
@@ -10,6 +15,13 @@ var assert = function(b, str) {
   }
 };
 
+// Tokenizing and parsing create abstract-syntax-tree objects
+// which are the main internal representation of the program.
+//
+// There is no bytecode or intermediate language.
+// This is partly intentional to make it simple to retain
+// source-level info (e.g. line, column, source text) while computing
+// to make it easier to show the user what's been going onwith their code, 
 var types = {  //strs easier for debugging, objs maybe faster
   // token types
   openParen: "openParen",//{},
