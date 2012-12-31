@@ -126,8 +126,6 @@ lispy.wrapJSVal = function(v) {
 };
 
 
-var english_numbering_names = ['first', 'second', 'third'];
-
 // == Builtin functions ==
 // Consider a JS var 'sexp' representing '(+ 2 3)';
 // sexp.type will be types.sexp.  '+' is sexp[0].
@@ -144,12 +142,12 @@ var english_numbering_names = ['first', 'second', 'third'];
 // function that does not evaluate both the true and false branches.
 
 // These are convenience functions for use writing builtins.
-function evaluate_to_number(sexp, env) {
+function evaluateToNumber(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
   assert(evaled.type === types.number, lispy.crappyRender(sexp) + " is not a number");
   return evaled.value;
 }
-function evaluate_to_bool(sexp, env) {
+function evaluateToBool(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
   assert(evaled.type === types.boolean, lispy.crappyRender(sexp) + " is not a boolean");
   return evaled.value;
@@ -181,29 +179,29 @@ var builtins = {
   // (This TODO will not be done in the prototype implementation.)
   '+': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(evaluate_to_number(sexp[1], env) + evaluate_to_number(sexp[2], env));
+    return mknum(evaluateToNumber(sexp[1], env) + evaluateToNumber(sexp[2], env));
   },
   '-': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(evaluate_to_number(sexp[1], env) - evaluate_to_number(sexp[2], env));
+    return mknum(evaluateToNumber(sexp[1], env) - evaluateToNumber(sexp[2], env));
   },
   '*': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(evaluate_to_number(sexp[1], env) * evaluate_to_number(sexp[2], env));
+    return mknum(evaluateToNumber(sexp[1], env) * evaluateToNumber(sexp[2], env));
   },
   '/': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(evaluate_to_number(sexp[1], env) / evaluate_to_number(sexp[2], env));
+    return mknum(evaluateToNumber(sexp[1], env) / evaluateToNumber(sexp[2], env));
   },
     //console.log(sexp);
     //floating point math?
   'mod': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(modulo(evaluate_to_number(sexp[1], env), evaluate_to_number(sexp[2], env)));
+    return mknum(modulo(evaluateToNumber(sexp[1], env), evaluateToNumber(sexp[2], env)));
   },
   'negate': function(sexp, env) {
     arityAssert(sexp, 2);
-    return mknum(-evaluate_to_number(sexp[1], env));
+    return mknum(-evaluateToNumber(sexp[1], env));
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
@@ -211,15 +209,15 @@ var builtins = {
   //short circuiting behavior here).
   'and': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_bool(sexp[1], env) && evaluate_to_bool(sexp[2], env));
+    return mkbool(evaluateToBool(sexp[1], env) && evaluateToBool(sexp[2], env));
   },
   'or': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_bool(sexp[1], env) || evaluate_to_bool(sexp[2], env));
+    return mkbool(evaluateToBool(sexp[1], env) || evaluateToBool(sexp[2], env));
   },
   'not': function(sexp, env) {
     arityAssert(sexp, 2);
-    return mkbool(!evaluate_to_bool(sexp[1], env));
+    return mkbool(!evaluateToBool(sexp[1], env));
   },
   //equality/lessthan ?
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
@@ -234,24 +232,24 @@ var builtins = {
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
   '<': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_number(sexp[1], env) < evaluate_to_number(sexp[2], env));
+    return mkbool(evaluateToNumber(sexp[1], env) < evaluateToNumber(sexp[2], env));
   },
   '>': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_number(sexp[1], env) > evaluate_to_number(sexp[2], env));
+    return mkbool(evaluateToNumber(sexp[1], env) > evaluateToNumber(sexp[2], env));
   },
   '>=': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_number(sexp[1], env) >= evaluate_to_number(sexp[2], env));
+    return mkbool(evaluateToNumber(sexp[1], env) >= evaluateToNumber(sexp[2], env));
   },
   '<=': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(evaluate_to_number(sexp[1], env) <= evaluate_to_number(sexp[2], env));
+    return mkbool(evaluateToNumber(sexp[1], env) <= evaluateToNumber(sexp[2], env));
   },
   // IIRC 'if' needs to be a builtin in strictly evaluated languages
   'if': function(sexp, env) {
     arityAssert(sexp, 4);
-    var b = evaluate_to_bool(sexp[1], env);
+    var b = evaluateToBool(sexp[1], env);
     return (b ? lispy.evaluate(sexp[2], env) : lispy.evaluate(sexp[3], env));
   },
   // these create
@@ -719,8 +717,7 @@ lispy.bindFreeVars = function(sexp, env) {
       else {
         // hmm
         return mkUnboundVariable();
-        // hmm could use a dummy variable here of type unbound_free_var or such
-      //  throw "Unbound free var " + v + " in " + lispy.crappyRender(sexp);
+        //throw "Unbound free var " + v + " in " + lispy.crappyRender(sexp);
       }
     });
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
