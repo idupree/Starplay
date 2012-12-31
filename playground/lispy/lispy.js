@@ -695,21 +695,26 @@ lispy.freeVarsIn = function(sexp, boundVars) {
 lispy.bindFreeVars = function(sexp, env) {
   // We sort this for determinacy's sake.
   var varsToBind = _.keys(lispy.freeVarsIn(sexp)).sort();
+  var bindableVarsToBind = _.filter(varsToBind, function(v) {
+    return _.has(env, v);
+  });
+  var unbindableVars = _.filter(varsToBind, function(v) {
+    return !_.has(env, v);
+  });
+  var unbindableEnv = {};
+  _.each(unbindableVars, function(v) {
+    unbindableEnv[v] = mkUnboundVariable();
+  });
 
-  if(varsToBind.length === 0) {
+  if(unbindableVars.length) {
+    sexp = lispy.substitute(unbindableEnv, sexp);
+  }
+
+  if(bindableVarsToBind.length === 0) {
     return sexp;
   }
   else {
-    var bindings = _.map(varsToBind, function(v) {
-      if(_.has(env, v)) {
-        return v;
-      }
-      else {
-        // hmm
-        return mkUnboundVariable();
-        //throw "Unbound free var " + v + " in " + lispy.printSexp(sexp);
-      }
-    });
+    var bindings = bindableVarsToBind;
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
     var paramsSexp = _.map(varsToBind, function(v) { return mkidentifier(v); });
     paramsSexp.type = types.list;
