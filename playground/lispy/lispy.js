@@ -144,19 +144,19 @@ lispy.wrapJSVal = function(v) {
 // These are convenience functions for use writing builtins.
 function evaluateToNumber(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
-  assert(evaled.type === types.number, lispy.crappyRender(sexp) + " is not a number");
+  assert(evaled.type === types.number, lispy.printSexp(sexp) + " is not a number");
   return evaled.value;
 }
 function evaluateToBool(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
-  assert(evaled.type === types.boolean, lispy.crappyRender(sexp) + " is not a boolean");
+  assert(evaled.type === types.boolean, lispy.printSexp(sexp) + " is not a boolean");
   return evaled.value;
 }
 // The required sexp length will be one more than
 // the number of arguments (the function name is also
 // part of the sexp length).
 function arityAssert(sexp, requiredSexpLengthCount) {
-  assert(sexp.length === requiredSexpLengthCount, lispy.crappyRender(sexp) + " arg count");
+  assert(sexp.length === requiredSexpLengthCount, lispy.printSexp(sexp) + " arg count");
 }
 function modulo(num, mod) {
   assert(mod > 0, "modulo: non-positive divisor " + mod);
@@ -264,7 +264,7 @@ var builtins = {
     return mkarray(result);
   }
   /*'dict': function(sexp, env) {
-    assert(sexp.length % 2 === 1, lispy.crappyRender(sexp) + " arg count is even");
+    assert(sexp.length % 2 === 1, lispy.printSexp(sexp) + " arg count is even");
     var result = {};
     var key = null;
     _.each(sexp, function(v) {
@@ -476,7 +476,7 @@ lispy.betaReduceO_N = function(sexp) {
   body.type = types.imperative;
 
   var substitutions = {};
-  assert(params.length === args.length, lispy.crappyRender(sexp) + " equal params length"); //no silly stuff!
+  assert(params.length === args.length, lispy.printSexp(sexp) + " equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
     assert(params[i].type === types.identifier, "params are identifiers");
     substitutions[params[i].string] = args[i];
@@ -508,7 +508,7 @@ lispy.isHeadBetaReducible = function(sexp) {
 };
 
 lispy.rep = lispy.readEvalPrint = function(str) {
-  return lispy.crappyRender(lispy.evaluate(lispy.parseProgram(str), builtinsAsLispyThings));
+  return lispy.printSexp(lispy.evaluate(lispy.parseProgram(str), builtinsAsLispyThings));
 };
 $(function() {
   var $code = $('#code');
@@ -529,8 +529,8 @@ $(function() {
 });
 
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
-// lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
-// lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
+// lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
+// lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
 
 //env is a {} from identifier (as plain string) to sexp.
 //It is used to look up free variables.
@@ -717,7 +717,7 @@ lispy.bindFreeVars = function(sexp, env) {
       else {
         // hmm
         return mkUnboundVariable();
-        //throw "Unbound free var " + v + " in " + lispy.crappyRender(sexp);
+        //throw "Unbound free var " + v + " in " + lispy.printSexp(sexp);
       }
     });
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
@@ -731,12 +731,12 @@ lispy.bindFreeVars = function(sexp, env) {
   }
 };
 
-lispy.crappyRender = function(sexp) {
+lispy.printSexpNonWhitespacePreserving = function(sexp) {
   var result;
   if(sexp.type === types.program || sexp.type === types.imperative) {
     result = '';
     _.each(sexp, function(subsexp) {
-      result += lispy.crappyRender(subsexp);
+      result += lispy.printSexpNonWhitespacePreserving(subsexp);
       result += '\n';
     });
     return result;
@@ -747,7 +747,7 @@ lispy.crappyRender = function(sexp) {
       if(index !== 0) {
         result += ' ';
       }
-      result += lispy.crappyRender(subsexp);
+      result += lispy.printSexpNonWhitespacePreserving(subsexp);
     });
     result += ')';
     return result;
@@ -756,7 +756,7 @@ lispy.crappyRender = function(sexp) {
     result = '(array';
     _.each(sexp.value, function(subsexp) {
       result += ' ';
-      result += lispy.crappyRender(subsexp);
+      result += lispy.printSexpNonWhitespacePreserving(subsexp);
     });
     result += ')';
     return result;
@@ -765,9 +765,9 @@ lispy.crappyRender = function(sexp) {
     result = '(dict';
     _.each(sexp.value, function(subsexpVal, subsexpKey) {
       result += ' ';
-      result += lispy.crappyRender(subsexpKey);
+      result += lispy.printSexpNonWhitespacePreserving(subsexpKey);
       result += ' ';
-      result += lispy.crappyRender(subsexpVal);
+      result += lispy.printSexpNonWhitespacePreserving(subsexpVal);
     });
     result += ')';
     return result;
@@ -776,6 +776,11 @@ lispy.crappyRender = function(sexp) {
     return sexp.string;
   }
 };
+
+// TODO perhaps use position information to do a better job
+// and perfectly roundtrip just-parsed lispy code.
+lispy.printSexp = lispy.printSexpNonWhitespacePreserving;
+
 
 //lispy.betaReduceO_1
 
