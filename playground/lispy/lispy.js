@@ -685,9 +685,10 @@ lispy.freeVarsIn = function(sexp, boundVars) {
   var freeVars = {};
   if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
-      var bindings = _.pluck(sexp[1], 'string');
+      var bindings = _.clone(boundVars);
+      _.each(_.pluck(sexp[1], 'string'), function(v) { bindings[v] = true; });
       _.each(sexp.slice(2), function(sub) {
-        _.extend(freeVars, lispy.freeVarsIn(sub, _.extend({}, bindings, boundVars)));
+        _.extend(freeVars, lispy.freeVarsIn(sub, bindings));
       });
     }
     else {
