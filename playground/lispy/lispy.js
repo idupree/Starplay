@@ -14,10 +14,10 @@ var assert = function(b, str) {
     throw ("assert failure!  " + (""+str));
   }
 };
-// TODO choose one of "list", "tree" and "sexp" and use it throughout.
 
 // Tokenizing and parsing create abstract-syntax-tree objects
-// which are the main internal representation of the program.
+// (S-expressions, or sexps) which are the main internal representation
+// of the program.
 //
 // There is no bytecode or intermediate language.
 // This is partly intentional to make it simple to retain
@@ -39,15 +39,15 @@ var types = {  //strs easier for debugging, objs maybe faster
 
   // composite types
   // code
-  list: "list",//{},             // (f a b), (f (a b) c),
-                                 // (arg1 arg2) in a fn, etc (S-expressions).
+  sexp: "sexp",//{},             // S-expressions, e.g. (f a b), (f (a b) c),
+                                 // (arg1 arg2) in a fn, etc.
   program: "program",//{}        // 1
                                  // 23
                                  // 456
                                  // (the sequence of S-expressions that
                                  //  make up a file.)
-  imperative: "imperative",//{}  // Function bodies -- a sequence
-                                 // of S-expressions -- become this
+  imperative: "imperative",//{}  // Function bodies, which are a sequence
+                                 // of S-expressions, become this
                                  // during evaluation.
 
   // data
@@ -129,13 +129,13 @@ lispy.wrapJSVal = function(v) {
 var english_numbering_names = ['first', 'second', 'third'];
 
 // == Builtin functions ==
-// Consider a JS var 'tree' representing '(+ 2 3)';
-// tree.type will be types.list.  '+' is tree[0].
+// Consider a JS var 'sexp' representing '(+ 2 3)';
+// sexp.type will be types.sexp.  '+' is sexp[0].
 // If the '+' in scope is
 //   {type: types.builtinFunction, value: f}
-// then the eval loop will call 'f(tree, env)' where
+// then the eval loop will call 'f(sexp, env)' where
 // env represents the variables in scope;
-// env is a JS object mapping identifier strings to sexprs that
+// env is a JS object mapping identifier strings to sexps that
 // might be unevaluated but definitely contain no free variables.
 //
 // Builtin functions also cannot count on their arguments being
@@ -144,14 +144,14 @@ var english_numbering_names = ['first', 'second', 'third'];
 // function that does not evaluate both the true and false branches.
 
 // These are convenience functions for use writing builtins.
-function evaluate_to_number(tree, env) {
-  var evaled = lispy.evaluate(tree, env);
-  assert(evaled.type === types.number, lispy.crappyRender(tree) + " is not a number");
+function evaluate_to_number(sexp, env) {
+  var evaled = lispy.evaluate(sexp, env);
+  assert(evaled.type === types.number, lispy.crappyRender(sexp) + " is not a number");
   return evaled;
 }
-function evaluate_to_bool(tree, env) {
-  var evaled = lispy.evaluate(tree, env);
-  assert(evaled.type === types.boolean, lispy.crappyRender(tree) + " is not a boolean");
+function evaluate_to_bool(sexp, env) {
+  var evaled = lispy.evaluate(sexp, env);
+  assert(evaled.type === types.boolean, lispy.crappyRender(sexp) + " is not a boolean");
   return evaled;
 }
 function modulo(num, mod) {
@@ -168,106 +168,106 @@ function modulo(num, mod) {
 // builtinsAsLispyThings as the env parameter to the lispy code you evaluate.
 var builtins = {
   // just binary ops currently, not the lisp pattern..
-  '+': function(tree, env) {
+  '+': function(sexp, env) {
     //TODO we could combine all src info till we had like everything it came from involved here?
     //TODO type/argnum checking? outsidely visible argument count?
- //   assert(tree.type === types.list);
- //   assert(tree[0].type === types.identifier);
- //   assert(tree[0].string === '+');
+ //   assert(sexp.type === types.sexp);
+ //   assert(sexp[0].type === types.identifier);
+ //   assert(sexp[0].string === '+');
     //those were generic. now,
-//    assert(tree.length === 3);
-//    assert(tree[1].type === types.number);
-//    assert(tree[2].type === types.number);
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    //console.log(tree);
+//    assert(sexp.length === 3);
+//    assert(sexp[1].type === types.number);
+//    assert(sexp[2].type === types.number);
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    //console.log(sexp);
     //floating point math?
-    return mknum(evaluate_to_number(tree[1], env).value + evaluate_to_number(tree[2], env).value);
+    return mknum(evaluate_to_number(sexp[1], env).value + evaluate_to_number(sexp[2], env).value);
   },
-  '-': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1], env).value - evaluate_to_number(tree[2], env).value);
+  '-': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mknum(evaluate_to_number(sexp[1], env).value - evaluate_to_number(sexp[2], env).value);
   },
-  '*': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1], env).value * evaluate_to_number(tree[2], env).value);
+  '*': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mknum(evaluate_to_number(sexp[1], env).value * evaluate_to_number(sexp[2], env).value);
   },
-  '/': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(evaluate_to_number(tree[1], env).value / evaluate_to_number(tree[2], env).value);
+  '/': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mknum(evaluate_to_number(sexp[1], env).value / evaluate_to_number(sexp[2], env).value);
   },
-  'mod': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mknum(modulo(evaluate_to_number(tree[1], env).value, evaluate_to_number(tree[2], env).value));
+  'mod': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mknum(modulo(evaluate_to_number(sexp[1], env).value, evaluate_to_number(sexp[2], env).value));
   },
-  'negate': function(tree, env) {
-    assert(tree.length === 2, lispy.crappyRender(tree) + " arg count");
-    return mknum(-evaluate_to_number(tree[1], env).value);
+  'negate': function(sexp, env) {
+    assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
+    return mknum(-evaluate_to_number(sexp[1], env).value);
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
   //one shows we don't need to know its value (intentionally) (due to the JS
   //short circuiting behavior here).
-  'and': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_bool(tree[1], env).value && evaluate_to_bool(tree[2], env).value);
+  'and': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_bool(sexp[1], env).value && evaluate_to_bool(sexp[2], env).value);
   },
-  'or': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_bool(tree[1], env).value || evaluate_to_bool(tree[2], env).value);
+  'or': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_bool(sexp[1], env).value || evaluate_to_bool(sexp[2], env).value);
   },
-  'not': function(tree, env) {
-    assert(tree.length === 2, lispy.crappyRender(tree) + " arg count");
-    return mkbool(!evaluate_to_bool(tree[1], env).value);
+  'not': function(sexp, env) {
+    assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(!evaluate_to_bool(sexp[1], env).value);
   },
   //equality/lessthan ?
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
-  '=': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(lispy.evaluate(tree[1], env).value === lispy.evaluate(tree[2], env).value);
+  '=': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(lispy.evaluate(sexp[1], env).value === lispy.evaluate(sexp[2], env).value);
   },
-  'not=': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(lispy.evaluate(tree[1], env).value !== lispy.evaluate(tree[2], env).value);
+  'not=': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(lispy.evaluate(sexp[1], env).value !== lispy.evaluate(sexp[2], env).value);
   },
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
-  '<': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1], env).value < evaluate_to_number(tree[2], env).value);
+  '<': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_number(sexp[1], env).value < evaluate_to_number(sexp[2], env).value);
   },
-  '>': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1], env).value > evaluate_to_number(tree[2], env).value);
+  '>': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_number(sexp[1], env).value > evaluate_to_number(sexp[2], env).value);
   },
-  '>=': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1], env).value >= evaluate_to_number(tree[2], env).value);
+  '>=': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_number(sexp[1], env).value >= evaluate_to_number(sexp[2], env).value);
   },
-  '<=': function(tree, env) {
-    assert(tree.length === 3, lispy.crappyRender(tree) + " arg count");
-    return mkbool(evaluate_to_number(tree[1], env).value <= evaluate_to_number(tree[2], env).value);
+  '<=': function(sexp, env) {
+    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    return mkbool(evaluate_to_number(sexp[1], env).value <= evaluate_to_number(sexp[2], env).value);
   },
   // IIRC 'if' needs to be a builtin in strictly evaluated languages
-  'if': function(tree, env) {
-    assert(tree.length === 4, lispy.crappyRender(tree) + " arg count");
-    var b = evaluate_to_bool(tree[1], env).value;
-    return (b ? lispy.evaluate(tree[2], env) : lispy.evaluate(tree[3], env));
+  'if': function(sexp, env) {
+    assert(sexp.length === 4, lispy.crappyRender(sexp) + " arg count");
+    var b = evaluate_to_bool(sexp[1], env).value;
+    return (b ? lispy.evaluate(sexp[2], env) : lispy.evaluate(sexp[3], env));
   },
   // these create
   //'array'
   //'dict'
   //(mutable? then they'd need a name and stuff)
-  'array': function(tree, env) {
+  'array': function(sexp, env) {
     var result = [];
-    _.each(tree.slice(1), function(v) {
+    _.each(sexp.slice(1), function(v) {
       result.push(lispy.evaluate(v, env));
     });
     return mkarray(result);
   }
-  /*'dict': function(tree, env) {
-    assert(tree.length % 2 === 1, lispy.crappyRender(tree) + " arg count is even");
+  /*'dict': function(sexp, env) {
+    assert(sexp.length % 2 === 1, lispy.crappyRender(sexp) + " arg count is even");
     var result = {};
     var key = null;
-    _.each(tree, function(v) {
+    _.each(sexp, function(v) {
       if(key) {
         result[key]//...wait JS only has strings for keys. hmm.
       }
@@ -402,13 +402,13 @@ function parseList(toks, pos, type) {
   ourNest.type = type;
   while(true) {
     if(toks[pos].type === types.openParen) {
-      var result = parseList(toks, pos + 1, types.list);
+      var result = parseList(toks, pos + 1, types.sexp);
       ourNest.push(result.parsed);
       pos = result.endPos;
     } else if(isLiteralValueToken(toks[pos])) {
       ourNest.push(toks[pos]);
       pos += 1;
-    } else if((toks[pos].type === types.closeParen && type === types.list) ||
+    } else if((toks[pos].type === types.closeParen && type === types.sexp) ||
               (toks[pos].type === types.EOF && type === types.program)) {
       pos += 1;
       return { parsed: ourNest, endPos: pos };
@@ -419,7 +419,7 @@ function parseList(toks, pos, type) {
   }
 }
 
-// parseProgram : string -> list/token structure
+// parseProgram : string -> sexp
 lispy.parseProgram = function(str) {
   return parseList(tokenize(str), 0, types.program).parsed;
 };
@@ -448,33 +448,35 @@ lispy.parseProgram = function(str) {
 // http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
 // http://en.wikipedia.org/wiki/Beta_normal_form
 
-function keepMetaDataFrom(tree, arrayTree) {
-  for(var key in tree) {
-    if(_.has(tree, key) && !/^[0-9]+$/.test(key)) {
-      arrayTree[key] = tree[key];
+
+// copies all non-numeric own keys from orig to dest
+function keepMetaDataFrom(orig, dest) {
+  for(var key in orig) {
+    if(_.has(orig, key) && !/^[0-9]+$/.test(key)) {
+      dest[key] = orig[key];
     }
   }
-  return arrayTree;
+  return dest;
 }
 
 //...larger arguments get (randomly)named, perhaps
-lispy.betaReduceO_N = function(tree) {
+lispy.betaReduceO_N = function(sexp) {
   // pattern-match ((fn (params...) body...) args...)
-  assert(lispy.isHeadBetaReducible(tree), "beta beta");
-  //assert(tree.type === types.list);
-  //assert(tree.length >= 1);
-  var fn = tree[0];
-  var args = tree.slice(1);
+  assert(lispy.isHeadBetaReducible(sexp), "beta beta");
+  //assert(sexp.type === types.sexp);
+  //assert(sexp.length >= 1);
+  var fn = sexp[0];
+  var args = sexp.slice(1);
   //assert(fn.length > 2);
   //assert(fn[0].type === types.identifier);
   //assert(fn[0].string === 'fn');
-  //assert(fn[1].type === types.list);
+  //assert(fn[1].type === types.sexp);
   var params = fn[1];
   var body = keepMetaDataFrom(fn, fn.slice(2));
   body.type = types.imperative;
 
   var substitutions = {};
-  assert(params.length === args.length, lispy.crappyRender(tree) + " equal params length"); //no silly stuff!
+  assert(params.length === args.length, lispy.crappyRender(sexp) + " equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
     assert(params[i].type === types.identifier, "params are identifiers");
     substitutions[params[i].string] = args[i];
@@ -490,17 +492,19 @@ lispy.betaReduceO_N = function(tree) {
 // evaluates until we have a int or lambda?
 // prevents list literals from being partly evaled?
 
-lispy.isLambdaLiteral = function(tree) {
-  return tree.type === types.list &&
-    tree.length > 1 &&
-    tree[0].type === types.identifier &&
-    tree[0].string === 'fn' &&
-    tree[1].type === types.list;
+// TODO make fn be scoped identifier, or
+// make the parser recognize it specially.
+lispy.isLambdaLiteral = function(sexp) {
+  return sexp.type === types.sexp &&
+    sexp.length > 1 &&
+    sexp[0].type === types.identifier &&
+    sexp[0].string === 'fn' &&
+    sexp[1].type === types.sexp;
 };
 
-lispy.isHeadBetaReducible = function(tree) {
-  return tree.type === types.list &&
-    tree.length >= 1 && lispy.isLambdaLiteral(tree[0]);
+lispy.isHeadBetaReducible = function(sexp) {
+  return sexp.type === types.sexp &&
+    sexp.length >= 1 && lispy.isLambdaLiteral(sexp[0]);
 };
 
 lispy.rep = lispy.readEvalPrint = function(str) {
@@ -528,74 +532,74 @@ $(function() {
 // lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
 // lispy.crappyRender(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
 
-//env is a {} from identifier (as plain string) to tree.
+//env is a {} from identifier (as plain string) to sexp.
 //It is used to look up free variables.
 //(Strictly evaluated substitution e.g. betaReduceO_N
 // cannot implement recursion or letrec,
 // so env is necessary, not just conventional.
 // It can be represented with a (let (...) ...)
-// around the to-be-evaluated tree if necessary.)
+// around the to-be-evaluated sexp if necessary.)
 //BUG TODO- members of 'env' cannot have any free variables.
 //I *think* pre-substituting them is fine but having a (env (...) ...)
 //primitive would be fine (like 'let' but clears the scope) (or let for
 //all the free variables also works fine) (assuming they *can* be referenced
 //thus).
 //
-//returns the evaluated version of the tree.
-lispy.evaluate = function(tree, env) {
+//returns the evaluated version of the sexp.
+lispy.evaluate = function(sexp, env) {
   if(arguments.length === 1) {
     env = {};
   }
   while(true) {
-    if(tree.type === types.identifier && _.has(env, tree.string)) {
+    if(sexp.type === types.identifier && _.has(env, sexp.string)) {
       // substitute plain identifiers from env:
       //   ident
-      tree = env[tree.string];
+      sexp = env[sexp.string];
     }
-    else if(tree.type === types.list && tree.length >= 1 &&
-        tree[0].type === types.identifier && _.has(env, tree[0].string)) {
+    else if(sexp.type === types.sexp && sexp.length >= 1 &&
+        sexp[0].type === types.identifier && _.has(env, sexp[0].string)) {
       // substitute function names that are about to be called from env:
       //   (ident ...)
-      var headEvaledTree = shallowCopyArray(tree);
-      headEvaledTree[0] = env[tree[0].string];
-      tree = headEvaledTree;
+      var headEvaledSexp = shallowCopyArray(sexp);
+      headEvaledSexp[0] = env[sexp[0].string];
+      sexp = headEvaledSexp;
     }
-    else if(lispy.isHeadBetaReducible(tree)) {
+    else if(lispy.isHeadBetaReducible(sexp)) {
       // call lambda:
       //   ((fn (...) ...) ...)
-      tree = lispy.strictBetaReduceO_N(tree, env);
+      sexp = lispy.strictBetaReduceO_N(sexp, env);
     }
-    else if(tree.type === types.program) {
+    else if(sexp.type === types.program) {
       // evaluate programs in sequence:
       //   (+ 1 2)
       //   (+ 3 4)
-      tree = keepMetaDataFrom(tree, _.map(tree, function(subtree) {
-        return lispy.evaluate(subtree, env);
+      sexp = keepMetaDataFrom(sexp, _.map(sexp, function(subsexp) {
+        return lispy.evaluate(subsexp, env);
       }));
       break;
     }
-    else if(tree.type === types.imperative) {
+    else if(sexp.type === types.imperative) {
       // evaluate function-bodies in sequence:
       //   (+ 1 2) (+ 3 4)
       var result = mkvoid();
-      _.each(tree, function(subtree) {
-        result = lispy.evaluate(subtree, env);
+      _.each(sexp, function(subsexp) {
+        result = lispy.evaluate(subsexp, env);
       });
-      tree = result;
+      sexp = result;
       break;
     }
-    else if(tree.type === types.list &&
-        tree[0].type === types.builtinFunction) {
+    else if(sexp.type === types.sexp &&
+        sexp[0].type === types.builtinFunction) {
       // evaluate builtins:
       //   (+ 1 2)
-      tree = tree[0].value(tree, env);
+      sexp = sexp[0].value(sexp, env);
       break;
     }
-    else if(tree.type === types.list &&
-        tree[0].type === types.list) {
+    else if(sexp.type === types.sexp &&
+        sexp[0].type === types.sexp) {
       // attempt to evaluate the function part:
       //   ((if true + -) 7 3)
-      var headEvaled = lispy.evaluate(tree[0], env);
+      var headEvaled = lispy.evaluate(sexp[0], env);
       // TODO identity-based equality comparison is
       // fragile here? (to prevent infinite loop
       // trying to reduce something that we can't
@@ -605,13 +609,13 @@ lispy.evaluate = function(tree, env) {
       // infinite loop/recursion worries, right?
       // (aside from legitimately nonterminating
       // computations, of course).
-      if(headEvaled === tree[0]) {
+      if(headEvaled === sexp[0]) {
         break;
       }
       else {
-        var headEvaledTree = shallowCopyArray(tree);
-        headEvaledTree[0] = headEvaled;
-        tree = headEvaledTree;
+        var headEvaledSexp = shallowCopyArray(sexp);
+        headEvaledSexp[0] = headEvaled;
+        sexp = headEvaledSexp;
       }
     }
     else {
@@ -619,21 +623,21 @@ lispy.evaluate = function(tree, env) {
       break;
     }
   }
-  tree = lispy.bindFreeVars(tree, env);
-  return tree;
+  sexp = lispy.bindFreeVars(sexp, env);
+  return sexp;
 };
 
 function shallowCopyArray(arr) {
   return keepMetaDataFrom(arr, _.map(arr, _.identity));
 }
 
-lispy.strictBetaReduceO_N = function(tree, env) {
-  assert(lispy.isHeadBetaReducible(tree), "strictBeta beta");
-  var argsEvaledTree = shallowCopyArray(tree);
-  for(var i = 1; i !== tree.length; ++i) {
-    argsEvaledTree[i] = lispy.evaluate(tree[i], env);
+lispy.strictBetaReduceO_N = function(sexp, env) {
+  assert(lispy.isHeadBetaReducible(sexp), "strictBeta beta");
+  var argsEvaledSexp = shallowCopyArray(sexp);
+  for(var i = 1; i !== sexp.length; ++i) {
+    argsEvaledSexp[i] = lispy.evaluate(sexp[i], env);
   }
-  return lispy.betaReduceO_N(argsEvaledTree);
+  return lispy.betaReduceO_N(argsEvaledSexp);
 };
 
 /*
@@ -646,64 +650,64 @@ lispy.strictBetaReduceO_N = function(tree, env) {
     { type: types.number, value: 7, string: "7", ... }
   ])
 
-wait, does it mutate or return a new tree? return a new tree. there might be sharing
+wait, does it mutate or return a new sexp? return a new sexp. there might be sharing
 of some tokens - we intend that they are never mutated by any code
 
 can 'fn' be bound? that is not guarded against.
 */
-lispy.substitute = function(varsToTreesMap, tree) {
-  if(tree.type === types.list || tree.type === types.program || tree.type === types.imperative) {
-    if(lispy.isLambdaLiteral(tree)) {
-      var bindings = _.pluck(tree[1], 'string');
-      var subMap = _.omit(varsToTreesMap, bindings);
-      return keepMetaDataFrom(tree, _.map(tree, function(sub) {
+lispy.substitute = function(varsToSexpsMap, sexp) {
+  if(sexp.type === types.sexp || sexp.type === types.program || sexp.type === types.imperative) {
+    if(lispy.isLambdaLiteral(sexp)) {
+      var bindings = _.pluck(sexp[1], 'string');
+      var subMap = _.omit(varsToSexpsMap, bindings);
+      return keepMetaDataFrom(sexp, _.map(sexp, function(sub) {
         return lispy.substitute(subMap, sub);
       }));
     }
     else {
-      return keepMetaDataFrom(tree, _.map(tree, function(sub) {
-        return lispy.substitute(varsToTreesMap, sub);
+      return keepMetaDataFrom(sexp, _.map(sexp, function(sub) {
+        return lispy.substitute(varsToSexpsMap, sub);
       }));
     }
   }
-  else if(tree.type === types.identifier && _.has(varsToTreesMap, tree.string)) {
-    return varsToTreesMap[tree.string];
+  else if(sexp.type === types.identifier && _.has(varsToSexpsMap, sexp.string)) {
+    return varsToSexpsMap[sexp.string];
   }
   else { //other token
-    return tree;
+    return sexp;
   }
 };
 
-// returns a set { var: true, ... } of the free vars in tree
+// returns a set { var: true, ... } of the free vars in sexp
 // Asymptotic complexity is currently suboptimal.
-lispy.freeVarsIn = function(tree, boundVars) {
+lispy.freeVarsIn = function(sexp, boundVars) {
   if(boundVars === undefined) { boundVars = {}; }
   var freeVars = {};
-  if(tree.type === types.list || tree.type === types.program || tree.type === types.imperative) {
-    if(lispy.isLambdaLiteral(tree)) {
-      var bindings = _.pluck(tree[1], 'string');
-      _.each(tree.slice(2), function(sub) {
+  if(sexp.type === types.sexp || sexp.type === types.program || sexp.type === types.imperative) {
+    if(lispy.isLambdaLiteral(sexp)) {
+      var bindings = _.pluck(sexp[1], 'string');
+      _.each(sexp.slice(2), function(sub) {
         _.extend(freeVars, lispy.freeVarsIn(sub, _.extend({}, bindings, boundVars)));
       });
     }
     else {
-      _.each(tree, function(sub) {
+      _.each(sexp, function(sub) {
         _.extend(freeVars, lispy.freeVarsIn(sub, boundVars));
       });
     }
   }
-  else if(tree.type === types.identifier && !_.has(boundVars, tree.string)) {
-    freeVars[tree.string] = true;
+  else if(sexp.type === types.identifier && !_.has(boundVars, sexp.string)) {
+    freeVars[sexp.string] = true;
   }
   return freeVars;
 };
 
-lispy.bindFreeVars = function(tree, env) {
+lispy.bindFreeVars = function(sexp, env) {
   // We sort this for determinacy's sake.
-  var varsToBind = _.keys(lispy.freeVarsIn(tree)).sort();
+  var varsToBind = _.keys(lispy.freeVarsIn(sexp)).sort();
 
   if(varsToBind.length === 0) {
-    return tree;
+    return sexp;
   }
   else {
     var bindings = _.map(varsToBind, function(v) {
@@ -714,63 +718,63 @@ lispy.bindFreeVars = function(tree, env) {
         // hmm
         return mkUnboundVariable();
         // hmm could use a dummy variable here of type unbound_free_var or such
-      //  throw "Unbound free var " + v + " in " + lispy.crappyRender(tree);
+      //  throw "Unbound free var " + v + " in " + lispy.crappyRender(sexp);
       }
     });
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
-    var paramsTree = _.map(varsToBind, function(v) { return mkidentifier(v); });
-    paramsTree.type = types.list;
-    var lambdaTree = [mkidentifier('fn'), paramsTree, tree];
-    lambdaTree.type = types.list;
-    var applyTree = [lambdaTree].concat(bindings);
-    applyTree.type = types.list;
-    return applyTree;
+    var paramsSexp = _.map(varsToBind, function(v) { return mkidentifier(v); });
+    paramsSexp.type = types.sexp;
+    var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];
+    lambdaSexp.type = types.sexp;
+    var applySexp = [lambdaSexp].concat(bindings);
+    applySexp.type = types.sexp;
+    return applySexp;
   }
 };
 
-lispy.crappyRender = function(tree) {
+lispy.crappyRender = function(sexp) {
   var result;
-  if(tree.type === types.program || tree.type === types.imperative) {
+  if(sexp.type === types.program || sexp.type === types.imperative) {
     result = '';
-    _.each(tree, function(subtree) {
-      result += lispy.crappyRender(subtree);
+    _.each(sexp, function(subsexp) {
+      result += lispy.crappyRender(subsexp);
       result += '\n';
     });
     return result;
   }
-  else if(tree.type === types.list) {
+  else if(sexp.type === types.sexp) {
     result = '(';
-    _.each(tree, function(subtree, index) {
+    _.each(sexp, function(subsexp, index) {
       if(index !== 0) {
         result += ' ';
       }
-      result += lispy.crappyRender(subtree);
+      result += lispy.crappyRender(subsexp);
     });
     result += ')';
     return result;
   }
-  else if(tree.type === types.array) {
+  else if(sexp.type === types.array) {
     result = '(array';
-    _.each(tree.value, function(subtree) {
+    _.each(sexp.value, function(subsexp) {
       result += ' ';
-      result += lispy.crappyRender(subtree);
+      result += lispy.crappyRender(subsexp);
     });
     result += ')';
     return result;
   }
-  else if(tree.type === types.dict) {
+  else if(sexp.type === types.dict) {
     result = '(dict';
-    _.each(tree.value, function(subtreeVal, subtreeKey) {
+    _.each(sexp.value, function(subsexpVal, subsexpKey) {
       result += ' ';
-      result += lispy.crappyRender(subtreeKey);
+      result += lispy.crappyRender(subsexpKey);
       result += ' ';
-      result += lispy.crappyRender(subtreeVal);
+      result += lispy.crappyRender(subsexpVal);
     });
     result += ')';
     return result;
   }
   else {
-    return tree.string;
+    return sexp.string;
   }
 };
 
