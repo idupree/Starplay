@@ -725,9 +725,9 @@ lispy.bindFreeVars = function(sexp, env) {
     return sexp;
   }
   else {
-    var bindings = bindableVarsToBind;
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
-    var paramsSexp = _.map(varsToBind, function(v) { return mkidentifier(v); });
+    var bindings   = _.map(bindableVarsToBind, function(v) { return env[v]; });
+    var paramsSexp = _.map(bindableVarsToBind, function(v) { return mkidentifier(v); });
     paramsSexp.type = types.list;
     var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];
     lambdaSexp.type = types.list;
