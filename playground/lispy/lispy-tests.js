@@ -62,6 +62,13 @@ lispy.test = function() {
   testEval('  1  ', '1');
   testBreak('- 1');
 
+  testBreak('"');
+  testEval('"foo bar"', '"foo bar"');
+  // multi line string literals are allowed:
+  testEval('"foo\nbar"', '"foo\nbar"');
+  // escaping:
+  testEval('"foo\\"and\\\\bar"', '"foo\\"and\\\\bar"');
+
   testEval('(+ 2 3)', '5');
   testEval('(+ 13 27)', '40');
   testEval('(- 13 27)', '-14');
@@ -159,6 +166,20 @@ lispy.test = function() {
   testEval('(array 1 (+ 3 6))', '(array 1 9)');
 
   testEval('a', 'unbound-variable');
+
+  testEval('((fn () 3))', '3');
+  testEval('(fn () 3)', '(fn () 3)');
+  // A more thorough canonicalization would alpha-rename
+  // bound vars to reverse de Bruijn notation or such. Hmm.
+  testEval('(fn (a) 3)', '(fn (a) 3)');
+  testEval('(fn (a b) a)', '(fn (a b) a)');
+  testEval('((fn (a b) a) 3 4)', '3');
+  // exact numbers of arguments must be given:
+  testBreak('((fn (a b) a) 3)');
+  testBreak('((fn (a b) a) 3 4 5)');
+  // functions can do complicated things with their arguments:
+  testEval('((fn (b v) (if b (* v v) (+ v v))) true 7)', '49');
+  testEval('((fn (b v) (if b (* v v) (+ v v))) false 7)', '14');
 
   if(errString !== "") {
     throw errString;
