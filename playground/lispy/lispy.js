@@ -66,6 +66,13 @@ var types = {  //strs easier for debugging, objs maybe faster
                                  // contain a JS function(){}) are this.
 };
 
+function isLiteralValueToken(tok) {
+  return tok.type === types.number ||
+    tok.type === types.identifier ||
+    tok.type === types.string ||
+    tok.type === types.boolean;
+}
+
 // Data in lispy-land are represented by a JS object
 // with { 'type': types.something } and other fields
 // depending on what the type is.  These functions
@@ -223,13 +230,23 @@ var builtins = {
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
   '=': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(lispy.evaluate(sexp[1], env).value === lispy.evaluate(sexp[2], env).value);
+    var arg1 = lispy.evaluate(sexp[1], env);
+    var arg2 = lispy.evaluate(sexp[2], env);
+    assert(isLiteralValueToken(arg1), lispy.printSexp(arg1) + " must be of atomic type to be compared using =");
+    assert(isLiteralValueToken(arg2), lispy.printSexp(arg2) + " must be of atomic type to be compared using =");
+    return mkbool(arg1.value === arg2.value);
   },
   'not=': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mkbool(lispy.evaluate(sexp[1], env).value !== lispy.evaluate(sexp[2], env).value);
+    var arg1 = lispy.evaluate(sexp[1], env);
+    var arg2 = lispy.evaluate(sexp[2], env);
+    assert(isLiteralValueToken(arg1), lispy.printSexp(arg1) + " must be of atomic type to be compared using not=");
+    assert(isLiteralValueToken(arg2), lispy.printSexp(arg2) + " must be of atomic type to be compared using not=");
+    return mkbool(arg1.value !== arg2.value);
   },
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
+  // TODO doing this deterministically for every type could be interesting.
+  // First consider what this means for mutable data types. (if there are any.)
   '<': function(sexp, env) {
     arityAssert(sexp, 3);
     return mkbool(evaluateToNumber(sexp[1], env) < evaluateToNumber(sexp[2], env));
@@ -387,13 +404,6 @@ function tokenize(str) {
   token({type: types.EOF}, 0);
   //console.log(result);
   return result;
-}
-
-function isLiteralValueToken(tok) {
-  return tok.type === types.number ||
-    tok.type === types.identifier ||
-    tok.type === types.string ||
-    tok.type === types.boolean;
 }
 
 // Returns { parsed: list of sub-lists or tokens, endPos: n } with endPos one-after-end
