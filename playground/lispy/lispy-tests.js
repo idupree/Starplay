@@ -49,6 +49,26 @@ lispy.test = function() {
       "\n";
   }
 
+  function test(jsFn, desiredResultStr) {
+    try {
+      var resultStr = ""+jsFn();
+    } catch(e) {
+      errString += "test error:"+
+        "\n        JS:\n"+jsFn+
+        "\n   actually "+e+
+        "\n  expected: "+desiredResultStr+
+        "\n";
+      return;
+    }
+    if(resultStr !== desiredResultStr) {
+      errString += "test error:"+
+        "\n        JS:\n"+jsFn+
+        "\n    actual: "+resultStr+
+        "\n  expected: "+desiredResultStr+
+        "\n";
+    }
+  }
+
   testEval('1', '1');
   testEval('12', '12');
   testEval('-2', '-2');
@@ -190,6 +210,16 @@ lispy.test = function() {
   testEval('((fn (f x y) (f (+ y y))) (fn (y) x) 4 3)', 'unbound-variable');
 
   testEval('((if true + -) 7 3)', '10');
+
+  test(function() {
+    return _.keys(lispy.freeVarsIn(lispy.parseSexp('(fn (y) (+ y y))'))
+                 ).sort().join(' ');
+  }, '+');
+  test(function() {
+    return _.keys(lispy.freeVarsIn(lispy.parseSexp('(fn (y) (+ y y))'),
+                                   lispy.builtinsAsLispyThings)
+                 ).sort().join(' ');
+  }, '');
 
   testEval('(((fn (x) (fn () x)) 3))', '3');
   testEval('(((fn (x) (fn (y) (+ x y))) 3) 4)', '7');
