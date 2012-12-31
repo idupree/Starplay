@@ -419,9 +419,16 @@ function parseList(toks, pos, type) {
   }
 }
 
-// parseProgram : string -> sexp
+// parseProgram : string -> sexps
 lispy.parseProgram = function(str) {
   return parseList(tokenize(str), 0, types.program).parsed;
+};
+
+// parseSexp : string -> sexp
+lispy.parseSexp = function(str) {
+  var prog = lispy.parseProgram(str);
+  assert(prog.length === 1, "parseSexp: program containing not exactly one sexp");
+  return prog[0];
 };
 
 // parseProgram ""
