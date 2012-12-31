@@ -154,6 +154,12 @@ function evaluate_to_bool(sexp, env) {
   assert(evaled.type === types.boolean, lispy.crappyRender(sexp) + " is not a boolean");
   return evaled.value;
 }
+// The required sexp length will be one more than
+// the number of arguments (the function name is also
+// part of the sexp length).
+function arityAssert(sexp, requiredSexpLengthCount) {
+  assert(sexp.length === requiredSexpLengthCount, lispy.crappyRender(sexp) + " arg count");
+}
 function modulo(num, mod) {
   assert(mod > 0, "modulo: non-positive divisor " + mod);
   var result = num % mod;
@@ -174,27 +180,29 @@ var builtins = {
   // TODO: don't rely on floating-point math.
   // (This TODO will not be done in the prototype implementation.)
   '+': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mknum(evaluate_to_number(sexp[1], env) + evaluate_to_number(sexp[2], env));
   },
   '-': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mknum(evaluate_to_number(sexp[1], env) - evaluate_to_number(sexp[2], env));
   },
   '*': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mknum(evaluate_to_number(sexp[1], env) * evaluate_to_number(sexp[2], env));
   },
   '/': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mknum(evaluate_to_number(sexp[1], env) / evaluate_to_number(sexp[2], env));
   },
+    //console.log(sexp);
+    //floating point math?
   'mod': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mknum(modulo(evaluate_to_number(sexp[1], env), evaluate_to_number(sexp[2], env)));
   },
   'negate': function(sexp, env) {
-    assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 2);
     return mknum(-evaluate_to_number(sexp[1], env));
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
@@ -202,47 +210,47 @@ var builtins = {
   //one shows we don't need to know its value (intentionally) (due to the JS
   //short circuiting behavior here).
   'and': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_bool(sexp[1], env) && evaluate_to_bool(sexp[2], env));
   },
   'or': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_bool(sexp[1], env) || evaluate_to_bool(sexp[2], env));
   },
   'not': function(sexp, env) {
-    assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 2);
     return mkbool(!evaluate_to_bool(sexp[1], env));
   },
   //equality/lessthan ?
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
   '=': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(lispy.evaluate(sexp[1], env).value === lispy.evaluate(sexp[2], env).value);
   },
   'not=': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(lispy.evaluate(sexp[1], env).value !== lispy.evaluate(sexp[2], env).value);
   },
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
   '<': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_number(sexp[1], env) < evaluate_to_number(sexp[2], env));
   },
   '>': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_number(sexp[1], env) > evaluate_to_number(sexp[2], env));
   },
   '>=': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_number(sexp[1], env) >= evaluate_to_number(sexp[2], env));
   },
   '<=': function(sexp, env) {
-    assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 3);
     return mkbool(evaluate_to_number(sexp[1], env) <= evaluate_to_number(sexp[2], env));
   },
   // IIRC 'if' needs to be a builtin in strictly evaluated languages
   'if': function(sexp, env) {
-    assert(sexp.length === 4, lispy.crappyRender(sexp) + " arg count");
+    arityAssert(sexp, 4);
     var b = evaluate_to_bool(sexp[1], env);
     return (b ? lispy.evaluate(sexp[2], env) : lispy.evaluate(sexp[3], env));
   },
