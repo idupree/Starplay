@@ -224,6 +224,7 @@ lispy.test = function() {
   testEval('(((fn (x) (fn () x)) 3))', '3');
   testEval('(((fn (x) (fn (y) (+ x y))) 3) 4)', '7');
   testEval('((fn (x) (fn (y) (+ x y))) 3)', '(fn (y) (+ 3 y))');
+  testEval('((fn (x) (fn (y) (not-actually-+ x y))) 3)', '(fn (y) (#unbound-variable 3 y))');
 
   // fn
   // (fn (x x)) ??
