@@ -23,6 +23,7 @@ lispy.test = function() {
         "\n  actually "+e+
         "\n  expected: "+desiredResultStr+
         "\n";
+      return;
     }
     if(resultStr !== desiredResultStr) {
       errString += "test error: mismatch:"+
