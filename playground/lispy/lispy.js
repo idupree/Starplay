@@ -147,12 +147,12 @@ var english_numbering_names = ['first', 'second', 'third'];
 function evaluate_to_number(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
   assert(evaled.type === types.number, lispy.crappyRender(sexp) + " is not a number");
-  return evaled;
+  return evaled.value;
 }
 function evaluate_to_bool(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
   assert(evaled.type === types.boolean, lispy.crappyRender(sexp) + " is not a boolean");
-  return evaled;
+  return evaled.value;
 }
 function modulo(num, mod) {
   assert(mod > 0, "modulo: non-positive divisor " + mod);
@@ -181,27 +181,27 @@ var builtins = {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
     //console.log(sexp);
     //floating point math?
-    return mknum(evaluate_to_number(sexp[1], env).value + evaluate_to_number(sexp[2], env).value);
+    return mknum(evaluate_to_number(sexp[1], env) + evaluate_to_number(sexp[2], env));
   },
   '-': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mknum(evaluate_to_number(sexp[1], env).value - evaluate_to_number(sexp[2], env).value);
+    return mknum(evaluate_to_number(sexp[1], env) - evaluate_to_number(sexp[2], env));
   },
   '*': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mknum(evaluate_to_number(sexp[1], env).value * evaluate_to_number(sexp[2], env).value);
+    return mknum(evaluate_to_number(sexp[1], env) * evaluate_to_number(sexp[2], env));
   },
   '/': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mknum(evaluate_to_number(sexp[1], env).value / evaluate_to_number(sexp[2], env).value);
+    return mknum(evaluate_to_number(sexp[1], env) / evaluate_to_number(sexp[2], env));
   },
   'mod': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mknum(modulo(evaluate_to_number(sexp[1], env).value, evaluate_to_number(sexp[2], env).value));
+    return mknum(modulo(evaluate_to_number(sexp[1], env), evaluate_to_number(sexp[2], env)));
   },
   'negate': function(sexp, env) {
     assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
-    return mknum(-evaluate_to_number(sexp[1], env).value);
+    return mknum(-evaluate_to_number(sexp[1], env));
   },
   //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
@@ -209,15 +209,15 @@ var builtins = {
   //short circuiting behavior here).
   'and': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_bool(sexp[1], env).value && evaluate_to_bool(sexp[2], env).value);
+    return mkbool(evaluate_to_bool(sexp[1], env) && evaluate_to_bool(sexp[2], env));
   },
   'or': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_bool(sexp[1], env).value || evaluate_to_bool(sexp[2], env).value);
+    return mkbool(evaluate_to_bool(sexp[1], env) || evaluate_to_bool(sexp[2], env));
   },
   'not': function(sexp, env) {
     assert(sexp.length === 2, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(!evaluate_to_bool(sexp[1], env).value);
+    return mkbool(!evaluate_to_bool(sexp[1], env));
   },
   //equality/lessthan ?
   // THIS IS NOT A VERY GOOD IMPLEMENTATION, TODO
@@ -232,24 +232,24 @@ var builtins = {
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
   '<': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_number(sexp[1], env).value < evaluate_to_number(sexp[2], env).value);
+    return mkbool(evaluate_to_number(sexp[1], env) < evaluate_to_number(sexp[2], env));
   },
   '>': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_number(sexp[1], env).value > evaluate_to_number(sexp[2], env).value);
+    return mkbool(evaluate_to_number(sexp[1], env) > evaluate_to_number(sexp[2], env));
   },
   '>=': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_number(sexp[1], env).value >= evaluate_to_number(sexp[2], env).value);
+    return mkbool(evaluate_to_number(sexp[1], env) >= evaluate_to_number(sexp[2], env));
   },
   '<=': function(sexp, env) {
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    return mkbool(evaluate_to_number(sexp[1], env).value <= evaluate_to_number(sexp[2], env).value);
+    return mkbool(evaluate_to_number(sexp[1], env) <= evaluate_to_number(sexp[2], env));
   },
   // IIRC 'if' needs to be a builtin in strictly evaluated languages
   'if': function(sexp, env) {
     assert(sexp.length === 4, lispy.crappyRender(sexp) + " arg count");
-    var b = evaluate_to_bool(sexp[1], env).value;
+    var b = evaluate_to_bool(sexp[1], env);
     return (b ? lispy.evaluate(sexp[2], env) : lispy.evaluate(sexp[3], env));
   },
   // these create
