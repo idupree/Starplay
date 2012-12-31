@@ -53,7 +53,7 @@ lispy.test = function() {
   testEval('-2', '-2');
   testEval('-002', '-2');
   testEval('0.5', '0.5');
-  testEval('a', 'under');
+  testEval('a', 'unbound-variable');
 
   if(errString !== "") {
     throw errString;
