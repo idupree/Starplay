@@ -14,40 +14,64 @@ var assert = function(b, str) {
     throw ("assert failure!  " + (""+str));
   }
 };
+// TODO choose one of "list", "tree" and "sexp" and use it throughout.
 
 // Tokenizing and parsing create abstract-syntax-tree objects
 // which are the main internal representation of the program.
 //
 // There is no bytecode or intermediate language.
 // This is partly intentional to make it simple to retain
-// source-level info (e.g. line, column, source text) while computing
-// to make it easier to show the user what's been going onwith their code, 
+// source-level info (e.g. line, column, source text) while computing,
+// to make it easier to show the user what's been going on with their code.
 var types = {  //strs easier for debugging, objs maybe faster
   // token types
-  openParen: "openParen",//{},
-  closeParen: "closeParen",//{},
-  number: "number",//{},
-  identifier: "identifier",//{},
-  boolean: "boolean",//{},
+  openParen: "openParen",//{},   // (
+  closeParen: "closeParen",//{}, // )
+  number: "number",//{},         // 123
+  identifier: "identifier",//{}, // abc
+  boolean: "boolean",//{},       // true
   comment: "comment",//{}, //TODO
-  string: "string",//{},
-  _void: "_void",//{}, //In JS, void is a keyword, so avoid it
-  EOF: "EOF",//{}
+  string: "string",//{},         // "Hi there."
+  // (In JS, void is a keyword,
+  // so we use _void for simplicity)
+  _void: "_void",//{},           // lack of result, e.g. from ((fn () ))
+  EOF: "EOF",//{}                // end-of-file (used for parsing)
 
   // composite types
-  list: "list",//{},
-  program: "program",//{}
-  imperative: "imperative",//{} //function bodies become this
+  // code
+  list: "list",//{},             // (f a b), (f (a b) c),
+                                 // (arg1 arg2) in a fn, etc (S-expressions).
+  program: "program",//{}        // 1
+                                 // 23
+                                 // 456
+                                 // (the sequence of S-expressions that
+                                 //  make up a file.)
+  imperative: "imperative",//{}  // Function bodies -- a sequence
+                                 // of S-expressions -- become this
+                                 // during evaluation.
 
-  array: "array",//{},
-  dict: "dict",//{}, //SOMEWHAT TODO
+  // data
+  // (I am not using/exposing lisp's homeomorphic abilities presently.)
+  // (There is no way to write a literal array or dict presently;
+  //  create them with builtin functions (array ...) or (TODO) (dict ...).
+  array: "array",//{},           // A runtime sequence
+  dict: "dict",//{}, //SOMEWHAT TODO: a runtime assoc
 
   // other types
-  unboundVariable: "unboundVariable",//{} //hmm
+  unboundVariable: "unboundVariable",//{}
+                                 // When an unbound variable is evaluated,
+                                 // it becomes this.
   builtinFunction: "builtinFunction"//{},
+                                 // Builtin functions (i.e. ones that simply
+                                 // contain a JS function(){}) are this.
 };
 
-
+// Data in lispy-land are represented by a JS object
+// with { 'type': types.something } and other fields
+// depending on what the type is.  These functions
+// provide ways to create basic lispy-land data:
+// mk*() for specific types, and wrapJSVal() for
+// any type that occurs both in JS values and lispy-land.
 var mkvoid = lispy.mkvoid = function() {
   return { type: types._void, string: "void" };
 };
@@ -74,7 +98,8 @@ function mkstr(s) {
   return { type: types.string, value: s,
            string: s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') };
 }
-// how to detect WHETHER an 'object' is a lispy object: i should put a field in.
+// TODO: how to detect WHETHER an 'object' is a lispy object:
+// i should put a field in.
 // *should* arrays have a string rep? PROBABLY NOT
 function mkarray(a) {
   return { type: types.array, value: a };
@@ -99,7 +124,26 @@ lispy.wrapJSVal = function(v) {
     throw 'wrapJSVal: not implemented yet: ' + v;
   }
 };
+
+
 var english_numbering_names = ['first', 'second', 'third'];
+
+// == Builtin functions ==
+// Consider a JS var 'tree' representing '(+ 2 3)';
+// tree.type will be types.list.  '+' is tree[0].
+// If the '+' in scope is
+//   {type: types.builtinFunction, value: f}
+// then the eval loop will call 'f(tree, env)' where
+// env represents the variables in scope;
+// env is a JS object mapping identifier strings to sexprs that
+// might be unevaluated but definitely contain no free variables.
+//
+// Builtin functions also cannot count on their arguments being
+// evaluated, and must do so if they wish to e.g. do math on their
+// arguments.  As a benefit, it is simple to write (if) as a builtin
+// function that does not evaluate both the true and false branches.
+
+// These are convenience functions for use writing builtins.
 function evaluate_to_number(tree, env) {
   var evaled = lispy.evaluate(tree, env);
   assert(evaled.type === types.number, lispy.crappyRender(tree) + " is not a number");
@@ -118,6 +162,10 @@ function modulo(num, mod) {
   }
   return result;
 }
+
+// These are the typical set of builtins.
+// You can make them available to lispy programs by passing
+// builtinsAsLispyThings as the env parameter to the lispy code you evaluate.
 var builtins = {
   // just binary ops currently, not the lisp pattern..
   '+': function(tree, env) {
@@ -228,18 +276,29 @@ var builtins = {
     return mkarray(result);
   }*/
 };
+var builtinsAsLispyThings = {};
+_.each(builtins, function(val, key) {
+  builtinsAsLispyThings[key] = lispy.wrapJSVal(val);
+});
+lispy.builtins = builtins;
+lispy.builtinsAsLispyThings = builtinsAsLispyThings;
+
+// TODO consider:
 //what if all composite types (fn, list, assoc) got names
 //let's see
 //i'll have to set up indirection for:
 //beta-reduce
 //any builtins that operate on list, assoc
 
-// following Scheme (not very accurately):
-// even [:alnum:] doesn't work in JS regexps
+// Legal characters in lispy identifiers are the same as Scheme allows
+// (mostly; even [:alnum:] doesn't work in JS regexps; this code ought to
+// allow non-ASCII letters but it's too hard to do in browser JS to justify
+// doing it in this language-prototype).
 var identifierChar = /[\-!$%&*+.\/:<=>?@\^_~0-9a-zA-Z]/;
-// following Haskell:
+// following Haskell, pretend there are tabstops every 8 characters
+// for the sake of defining what column a character is at:
 var tabwidthForColumnCount = 8;
-// following the most common conventions:
+// following the most common conventions for line and column numbering:
 var initialLine = 1;
 var initialColumn = 0;
 
@@ -329,12 +388,6 @@ function tokenize(str) {
   //console.log(result);
   return result;
 }
-var builtinsAsLispyThings = {};
-_.each(builtins, function(val, key) {
-  builtinsAsLispyThings[key] = lispy.wrapJSVal(val);
-});
-lispy.builtins = builtins;
-lispy.builtinsAsLispyThings = builtinsAsLispyThings;
 
 function isLiteralValueToken(tok) {
   return tok.type === types.number ||
