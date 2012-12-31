@@ -90,6 +90,11 @@ lispy.test = function() {
   testEval('(not false)', 'true');
   testEval('(not true)', 'false');
 
+  // Extra whitespace doesn't stop evaluation:
+  testEval('  (  not  true  )  ', 'false');
+  // Test nested evaluation:
+  testEval('(+ (+ 1 2) 4)', '7');
+
   // We currently choose not to have weakly typed boolean ops:
   testBreak('(and true 3)');
   testBreak('(or false 3)');
@@ -97,6 +102,61 @@ lispy.test = function() {
   // but allow boolean short-circuiting to short-circuit type safety:
   testEval('(and false 3)', 'false');
   testEval('(or true 3)', 'true');
+
+  testEval('(= 1 2)', 'false');
+  testEval('(not= 1 2)', 'true');
+  testEval('(= 1 1)', 'true');
+  testEval('(not= 1 1)', 'false');
+  testEval('(= -1 -001)', 'true');
+  testEval('(not= -1 -001)', 'false');
+
+  testEval('(= true true)', 'true');
+  testEval('(not= true true)', 'false');
+  testEval('(= true false)', 'false');
+  testEval('(not= true false)', 'true');
+
+  // Cross-type equality comparison is currently acceptable:
+  testEval('(= true 17)', 'false');
+
+  // Equality on non-atoms is horribly defined presently:
+  // it should be forbidden unless it gets a good definition:
+  testBreak('(= (array) (array))');
+  testBreak('(not= (array) (array))');
+
+  // Non-numbers can't be compared for ordering at present.
+  testBreak('(< false true)');
+  testBreak('(< false 3)');
+  testBreak('(< 3 false)');
+  testBreak('(> false true)');
+  testBreak('(>= false true)');
+  testBreak('(<= false true)');
+
+  testEval('(> 1 2)', 'false');
+  testEval('(>= 1 2)', 'false');
+  testEval('(< 1 2)', 'true');
+  testEval('(<= 1 2)', 'true');
+  testEval('(> 1 1)', 'false');
+  testEval('(>= 1 1)', 'true');
+  testEval('(< 1 1)', 'false');
+  testEval('(<= 1 1)', 'true');
+
+  testBreak('(if 1 2 3)');
+  testEval('(if true 2 3)', '2');
+  testEval('(if false 2 3)', '3');
+  testEval('(if (= 1 1) 2 3)', '2');
+  testEval('(if (= 1 3) 2 3)', '3');
+  // short-circuiting:
+  testEval('(if (= 1 1) 2 (not 17))', '2');
+  testEval('(if (= 1 2) (not 17) 3)', '3');
+  testBreak('(if (= 1 2) 2 (not 17))');
+  testBreak('(if (= 1 1) (not 17) 3)');
+
+  testEval('(array 1 4)', '(array 1 4)');
+  testEval('(array false)', '(array false)');
+  testEval('(array 1 4 true)', '(array 1 4 true)');
+  testEval('(array)', '(array)');
+  testEval('(  array  )', '(array)');
+  testEval('(array 1 (+ 3 6))', '(array 1 9)');
 
   testEval('a', 'unbound-variable');
 
