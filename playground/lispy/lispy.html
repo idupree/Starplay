@@ -7,6 +7,27 @@
         <script src="underscore-min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
         <script src="lispy.js"></script>
+        <script>
+          $(function() {
+            "use strict";
+            var $code = $('#code');
+            var $out = $('#out');
+            var $testresults = $('#testresults');
+            $code.on('change keyup', function() {
+              var code = $code.val();
+              var out;
+              try {
+                out = lispy.rep(code);
+              }
+              catch(e) {
+                out = (""+e);
+              }
+              $out.text(out);
+            });
+            $code.val("((fn (x) x) 3)\n(+ 3 4)\n45\n\n((fn (x)\n  (if (= (mod x 2) 0)\n      (/ x 2)\n      (+ (* x 3) 1)))\n3)");
+            $code.trigger('change');
+          });
+        </script>
         <!--[if lte IE 8]><script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
     </head>
     <body>

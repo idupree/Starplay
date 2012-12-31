@@ -510,23 +510,6 @@ lispy.isHeadBetaReducible = function(sexp) {
 lispy.rep = lispy.readEvalPrint = function(str) {
   return lispy.printSexp(lispy.evaluate(lispy.parseProgram(str), builtinsAsLispyThings));
 };
-$(function() {
-  var $code = $('#code');
-  var $out = $('#out');
-  $code.on('change keyup', function() {
-    var code = $code.val();
-    var out;
-    try {
-      out = lispy.rep(code);
-    }
-    catch(e) {
-      out = (""+e);
-    }
-    $out.text(out);
-  });
-  $code.val("((fn (x) x) 3)\n(+ 3 4)\n45\n\n((fn (x)\n  (if (= (mod x 2) 0)\n      (/ x 2)\n      (+ (* x 3) 1)))\n3)");
-  $code.trigger('change');
-});
 
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
 // lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
