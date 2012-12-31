@@ -96,10 +96,10 @@ function mkidentifier(s) {
   return { type: types.identifier, string: s };
 }
 function mkUnboundVariable() {
-  return { type: types.unboundVariable, string: 'unbound-variable' };
+  return { type: types.unboundVariable, string: '#unbound-variable' };
 }
 function mkfn(f) {
-  return { type: types.builtinFunction, value: f, string: (""+f) };
+  return { type: types.builtinFunction, value: f, string: ("(#builtin-javascript-"+f+")") };
 }
 function mkstr(s) {
   return { type: types.string, value: s,
