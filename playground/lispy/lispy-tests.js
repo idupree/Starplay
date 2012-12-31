@@ -181,6 +181,20 @@ lispy.test = function() {
   // functions can do complicated things with their arguments:
   testEval('((fn (b v) (if b (* v v) (+ v v))) true 7)', '49');
   testEval('((fn (b v) (if b (* v v) (+ v v))) false 7)', '14');
+  // higher-order functions, scope, closures:
+  testEval('((fn (f) (f)) (fn () 3))', '3');
+  testEval('((fn (f) (f 3)) (fn (f) f))', '3');
+  testEval('((fn (f x) (f 3)) (fn (x) x) 4)', '3');
+  testEval('((fn (f x) (f 3)) (fn (y) x) 4)', 'unbound-variable');
+
+  testEval('(((fn (x) (fn () x)) 3))', '3');
+  testEval('(((fn (x) (fn (y) (+ x y))) 3) 4)', '7');
+  testEval('((fn (x) (fn (y) (+ x y))) 3)', '(fn (y) (+ 3 y))');
+
+  // fn
+  // (fn (x x)) ??
+  // y combinator
+
 
   if(errString !== "") {
     throw errString;
