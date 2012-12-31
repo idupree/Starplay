@@ -167,20 +167,14 @@ function modulo(num, mod) {
 // You can make them available to lispy programs by passing
 // builtinsAsLispyThings as the env parameter to the lispy code you evaluate.
 var builtins = {
-  // just binary ops currently, not the lisp pattern..
+  // We just offer binary ops currently, not the lisp pattern of
+  // monoidal ops like '+', '*', 'or', 'and' accepting any number of
+  // arguments.
+
+  // TODO: don't rely on floating-point math.
+  // (This TODO will not be done in the prototype implementation.)
   '+': function(sexp, env) {
-    //TODO we could combine all src info till we had like everything it came from involved here?
-    //TODO type/argnum checking? outsidely visible argument count?
- //   assert(sexp.type === types.sexp);
- //   assert(sexp[0].type === types.identifier);
- //   assert(sexp[0].string === '+');
-    //those were generic. now,
-//    assert(sexp.length === 3);
-//    assert(sexp[1].type === types.number);
-//    assert(sexp[2].type === types.number);
     assert(sexp.length === 3, lispy.crappyRender(sexp) + " arg count");
-    //console.log(sexp);
-    //floating point math?
     return mknum(evaluate_to_number(sexp[1], env) + evaluate_to_number(sexp[2], env));
   },
   '-': function(sexp, env) {
