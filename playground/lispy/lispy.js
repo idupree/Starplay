@@ -39,7 +39,7 @@ var types = {  //strs easier for debugging, objs maybe faster
 
   // composite types
   // code
-  sexp: "sexp",//{},             // S-expressions, e.g. (f a b), (f (a b) c),
+  list: "list",//{},             // S-expressions, e.g. (f a b), (f (a b) c),
                                  // (arg1 arg2) in a fn, etc.
   program: "program",//{}        // 1
                                  // 23
@@ -128,7 +128,7 @@ lispy.wrapJSVal = function(v) {
 
 // == Builtin functions ==
 // Consider a JS var 'sexp' representing '(+ 2 3)';
-// sexp.type will be types.sexp.  '+' is sexp[0].
+// sexp.type will be types.list.  '+' is sexp[0].
 // If the '+' in scope is
 //   {type: types.builtinFunction, value: f}
 // then the eval loop will call 'f(sexp, env)' where
@@ -402,13 +402,13 @@ function parseList(toks, pos, type) {
   ourNest.type = type;
   while(true) {
     if(toks[pos].type === types.openParen) {
-      var result = parseList(toks, pos + 1, types.sexp);
+      var result = parseList(toks, pos + 1, types.list);
       ourNest.push(result.parsed);
       pos = result.endPos;
     } else if(isLiteralValueToken(toks[pos])) {
       ourNest.push(toks[pos]);
       pos += 1;
-    } else if((toks[pos].type === types.closeParen && type === types.sexp) ||
+    } else if((toks[pos].type === types.closeParen && type === types.list) ||
               (toks[pos].type === types.EOF && type === types.program)) {
       pos += 1;
       return { parsed: ourNest, endPos: pos };
@@ -463,14 +463,14 @@ function keepMetaDataFrom(orig, dest) {
 lispy.betaReduceO_N = function(sexp) {
   // pattern-match ((fn (params...) body...) args...)
   assert(lispy.isHeadBetaReducible(sexp), "beta beta");
-  //assert(sexp.type === types.sexp);
+  //assert(sexp.type === types.list);
   //assert(sexp.length >= 1);
   var fn = sexp[0];
   var args = sexp.slice(1);
   //assert(fn.length > 2);
   //assert(fn[0].type === types.identifier);
   //assert(fn[0].string === 'fn');
-  //assert(fn[1].type === types.sexp);
+  //assert(fn[1].type === types.list);
   var params = fn[1];
   var body = keepMetaDataFrom(fn, fn.slice(2));
   body.type = types.imperative;
@@ -495,15 +495,15 @@ lispy.betaReduceO_N = function(sexp) {
 // TODO make fn be scoped identifier, or
 // make the parser recognize it specially.
 lispy.isLambdaLiteral = function(sexp) {
-  return sexp.type === types.sexp &&
+  return sexp.type === types.list &&
     sexp.length > 1 &&
     sexp[0].type === types.identifier &&
     sexp[0].string === 'fn' &&
-    sexp[1].type === types.sexp;
+    sexp[1].type === types.list;
 };
 
 lispy.isHeadBetaReducible = function(sexp) {
-  return sexp.type === types.sexp &&
+  return sexp.type === types.list &&
     sexp.length >= 1 && lispy.isLambdaLiteral(sexp[0]);
 };
 
@@ -556,7 +556,7 @@ lispy.evaluate = function(sexp, env) {
       //   ident
       sexp = env[sexp.string];
     }
-    else if(sexp.type === types.sexp && sexp.length >= 1 &&
+    else if(sexp.type === types.list && sexp.length >= 1 &&
         sexp[0].type === types.identifier && _.has(env, sexp[0].string)) {
       // substitute function names that are about to be called from env:
       //   (ident ...)
@@ -588,15 +588,15 @@ lispy.evaluate = function(sexp, env) {
       sexp = result;
       break;
     }
-    else if(sexp.type === types.sexp &&
+    else if(sexp.type === types.list &&
         sexp[0].type === types.builtinFunction) {
       // evaluate builtins:
       //   (+ 1 2)
       sexp = sexp[0].value(sexp, env);
       break;
     }
-    else if(sexp.type === types.sexp &&
-        sexp[0].type === types.sexp) {
+    else if(sexp.type === types.list &&
+        sexp[0].type === types.list) {
       // attempt to evaluate the function part:
       //   ((if true + -) 7 3)
       var headEvaled = lispy.evaluate(sexp[0], env);
@@ -656,7 +656,7 @@ of some tokens - we intend that they are never mutated by any code
 can 'fn' be bound? that is not guarded against.
 */
 lispy.substitute = function(varsToSexpsMap, sexp) {
-  if(sexp.type === types.sexp || sexp.type === types.program || sexp.type === types.imperative) {
+  if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
       var bindings = _.pluck(sexp[1], 'string');
       var subMap = _.omit(varsToSexpsMap, bindings);
@@ -683,7 +683,7 @@ lispy.substitute = function(varsToSexpsMap, sexp) {
 lispy.freeVarsIn = function(sexp, boundVars) {
   if(boundVars === undefined) { boundVars = {}; }
   var freeVars = {};
-  if(sexp.type === types.sexp || sexp.type === types.program || sexp.type === types.imperative) {
+  if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
       var bindings = _.pluck(sexp[1], 'string');
       _.each(sexp.slice(2), function(sub) {
@@ -722,11 +722,11 @@ lispy.bindFreeVars = function(sexp, env) {
     });
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
     var paramsSexp = _.map(varsToBind, function(v) { return mkidentifier(v); });
-    paramsSexp.type = types.sexp;
+    paramsSexp.type = types.list;
     var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];
-    lambdaSexp.type = types.sexp;
+    lambdaSexp.type = types.list;
     var applySexp = [lambdaSexp].concat(bindings);
-    applySexp.type = types.sexp;
+    applySexp.type = types.list;
     return applySexp;
   }
 };
@@ -741,7 +741,7 @@ lispy.printSexpNonWhitespacePreserving = function(sexp) {
     });
     return result;
   }
-  else if(sexp.type === types.sexp) {
+  else if(sexp.type === types.list) {
     result = '(';
     _.each(sexp, function(subsexp, index) {
       if(index !== 0) {
