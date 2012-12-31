@@ -53,6 +53,51 @@ lispy.test = function() {
   testEval('-2', '-2');
   testEval('-002', '-2');
   testEval('0.5', '0.5');
+  testEval('-0', '0');
+
+  testBreak('(');
+  testBreak(')');
+  testBreak('1 2');
+  testBreak('1\n2');
+  testEval('  1  ', '1');
+  testBreak('- 1');
+
+  testEval('(+ 2 3)', '5');
+  testEval('(+ 13 27)', '40');
+  testEval('(- 13 27)', '-14');
+  testEval('(- 3 2)', '1');
+  testEval('(* 3 2)', '6');
+  testEval('(/ 3 2)', '1.5');
+  testEval('(mod 5 3)', '2');
+  testEval('(mod -5 3)', '1');
+  testBreak('(mod 5 -3)');
+  testBreak('(mod -5 -3)');
+  testEval('(negate 3)', '-3');
+  testEval('(negate -3)', '3');
+  testEval('(negate 0)', '0');
+  testEval('(negate -0)', '0');
+
+  testEval('true', 'true');
+  testEval('false', 'false');
+  testEval('(and  true false)', 'false');
+  testEval('(and  true  true)', 'true');
+  testEval('(and false false)', 'false');
+  testEval('(and  false true)', 'false');
+  testEval('(or  true false)', 'true');
+  testEval('(or  true  true)', 'true');
+  testEval('(or false false)', 'false');
+  testEval('(or  false true)', 'true');
+  testEval('(not false)', 'true');
+  testEval('(not true)', 'false');
+
+  // We currently choose not to have weakly typed boolean ops:
+  testBreak('(and true 3)');
+  testBreak('(or false 3)');
+  testBreak('(not 3)');
+  // but allow boolean short-circuiting to short-circuit type safety:
+  testEval('(and false 3)', 'false');
+  testEval('(or true 3)', 'true');
+
   testEval('a', 'unbound-variable');
 
   if(errString !== "") {
