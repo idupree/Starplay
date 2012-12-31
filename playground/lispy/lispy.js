@@ -705,11 +705,11 @@ lispy.freeVarsIn = function(sexp, boundVars) {
 
 lispy.bindFreeVars = function(sexp, env) {
   // We sort this for determinacy's sake.
-  var varsToBind = _.keys(lispy.freeVarsIn(sexp)).sort();
-  var bindableVarsToBind = _.filter(varsToBind, function(v) {
+  var freeVars = _.keys(lispy.freeVarsIn(sexp)).sort();
+  var bindableVarsToBind = _.filter(freeVars, function(v) {
     return _.has(env, v);
   });
-  var unbindableVars = _.filter(varsToBind, function(v) {
+  var unbindableVars = _.filter(freeVars, function(v) {
     return !_.has(env, v);
   });
   var unbindableEnv = {};
