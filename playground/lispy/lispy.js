@@ -101,6 +101,9 @@ function mkUnboundVariable() {
 function mkfn(f) {
   return { type: types.builtinFunction, value: f, string: ("(#builtin-javascript-"+f+")") };
 }
+function mknamedfn(name, f) {
+  return { type: types.builtinFunction, value: f, string: ("#builtin:"+name) };
+}
 function mkstr(s) {
   return { type: types.string, value: s,
            string: s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') };
@@ -129,6 +132,14 @@ lispy.wrapJSVal = function(v) {
   }
   else {
     throw 'wrapJSVal: not implemented yet: ' + v;
+  }
+};
+lispy.wrapNamedJSVal = function(name, v) {
+  if(_.isFunction(v)) {
+    return mknamedfn(name, v);
+  }
+  else {
+    return lispy.wrapJSVal(v);
   }
 };
 
@@ -295,7 +306,7 @@ var builtins = {
 };
 var builtinsAsLispyThings = {};
 _.each(builtins, function(val, key) {
-  builtinsAsLispyThings[key] = lispy.wrapJSVal(val);
+  builtinsAsLispyThings[key] = lispy.wrapNamedJSVal(key, val);
 });
 lispy.builtins = builtins;
 lispy.builtinsAsLispyThings = builtinsAsLispyThings;
