@@ -186,6 +186,10 @@ lispy.test = function() {
   testEval('((fn (f) (f 3)) (fn (f) f))', '3');
   testEval('((fn (f x) (f 3)) (fn (x) x) 4)', '3');
   testEval('((fn (f x) (f 3)) (fn (y) x) 4)', 'unbound-variable');
+  testEval('((fn (f x y) (f (+ y y))) (fn (x) x) 4 3)', '6');
+  testEval('((fn (f x y) (f (+ y y))) (fn (y) x) 4 3)', 'unbound-variable');
+
+  testEval('((if true + -) 7 3)', '10');
 
   testEval('(((fn (x) (fn () x)) 3))', '3');
   testEval('(((fn (x) (fn (y) (+ x y))) 3) 4)', '7');
