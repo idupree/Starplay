@@ -8,37 +8,45 @@
 (function() {
 "use strict";
 
-function testEval(exprStr, desiredResultStr) {
-  try {
-    var expr = lispy.parseSexp(exprStr);
-    var result = lispy.evaluate(expr, lispy.builtinsAsLispyThings);
-    var resultStr = lispy.printSexpNonWhitespacePreserving(result);
-  } catch(e) {
-    throw "test error: broken:\n      expr: "+exprStr+
-                            "\n  actually "+e+
-                            "\n  expected: "+desiredResultStr;
-  }
-  if(resultStr !== desiredResultStr) {
-    throw "test error: mismatch:\n      expr: "+exprStr+
-                               "\n    actual: "+resultStr+
-                               "\n  expected: "+desiredResultStr;
-  }
-}
-
-function testBreak(exprStr) {
-  try {
-    var expr = lispy.parseSexp(exprStr);
-    var result = lispy.evaluate(expr, lispy.builtinsAsLispyThings);
-    var resultStr = lispy.printSexpNonWhitespacePreserving(result);
-  } catch(e) {
-    return;
-  }
-  throw "test error: did not break:\n      expr: "+exprStr+
-                                  "\n    actual: "+resultStr+
-                                  "\n  expected an exception.";
-}
 
 lispy.test = function() {
+  var errString = "";
+
+  function testEval(exprStr, desiredResultStr) {
+    try {
+      var expr = lispy.parseSexp(exprStr);
+      var result = lispy.evaluate(expr, lispy.builtinsAsLispyThings);
+      var resultStr = lispy.printSexpNonWhitespacePreserving(result);
+    } catch(e) {
+      errString += "test error: broken:"+
+        "\n      expr: "+exprStr+
+        "\n  actually "+e+
+        "\n  expected: "+desiredResultStr+
+        "\n";
+    }
+    if(resultStr !== desiredResultStr) {
+      errString += "test error: mismatch:"+
+        "\n      expr: "+exprStr+
+        "\n    actual: "+resultStr+
+        "\n  expected: "+desiredResultStr+
+        "\n";
+    }
+  }
+
+  function testBreak(exprStr) {
+    try {
+      var expr = lispy.parseSexp(exprStr);
+      var result = lispy.evaluate(expr, lispy.builtinsAsLispyThings);
+      var resultStr = lispy.printSexpNonWhitespacePreserving(result);
+    } catch(e) {
+      return;
+    }
+    errString += "test error: did not break:"+
+      "\n      expr: "+exprStr+
+      "\n    actual: "+resultStr+
+      "\n  expected an exception."+
+      "\n";
+  }
 
   testEval('1', '1');
   testEval('12', '12');
@@ -47,8 +55,9 @@ lispy.test = function() {
   testEval('0.5', '0.5');
   testEval('a', 'under');
 
-  //test(function() { test})
-
+  if(errString !== "") {
+    throw errString;
+  }
 };
 
 
