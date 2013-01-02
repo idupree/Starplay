@@ -226,6 +226,8 @@ lispy.test = function() {
   testEval('((fn (x) (fn (y) (+ x y))) 3)', '(fn (y) (+ 3 y))');
   testEval('((fn (x) (fn (y) (not-actually-+ x y))) 3)', '(fn (y) (#unbound-variable 3 y))');
 
+  testEval('(letrec (fac (fn (n) (if (= n 0) 1 (* n (fac (- n 1)))))) (fac 4))', '24');
+
   // fn
   // (fn (x x)) ??
   // y combinator
