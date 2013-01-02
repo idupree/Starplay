@@ -12,11 +12,17 @@
 lispy.test = function() {
   var errString = "";
 
+  // REP: read, eval, print
+  function testREP(exprStr) {
+    var expr = lispy.parseSexp(exprStr);
+    var result = lispy.evaluate(expr, lispy.builtinsEnv);
+    var resultStr = lispy.printSexpNonWhitespacePreserving(result);
+    return resultStr;
+  }
+
   function testEval(exprStr, desiredResultStr) {
     try {
-      var expr = lispy.parseSexp(exprStr);
-      var result = lispy.evaluate(expr, lispy.builtinsEnv);
-      var resultStr = lispy.printSexpNonWhitespacePreserving(result);
+      var resultStr = testREP(exprStr);
     } catch(e) {
       errString += "test error: broken:"+
         "\n      expr: "+exprStr+
@@ -36,9 +42,7 @@ lispy.test = function() {
 
   function testBreak(exprStr) {
     try {
-      var expr = lispy.parseSexp(exprStr);
-      var result = lispy.evaluate(expr, lispy.builtinsEnv);
-      var resultStr = lispy.printSexpNonWhitespacePreserving(result);
+      var resultStr = testREP(exprStr);
     } catch(e) {
       return;
     }
