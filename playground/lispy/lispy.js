@@ -604,7 +604,7 @@ lispy.rep = lispy.readEvalPrint = function(str) {
 // lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
 // lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
 
-//TODO fix desc: env is an environment (see section above).
+//TODO fix desc: env is an environment (see section Environments).
 //It is used to look up free variables.
 //(Strictly evaluated substitution e.g. betaReduceO_N
 // cannot implement recursion or letrec,
@@ -779,28 +779,29 @@ lispy.freeVarsIn = function(sexp, boundVars) {
 lispy.bindFreeVars = function(sexp, env) {
   // We sort this for determinacy's sake.
   var freeVars = _.keys(lispy.freeVarsIn(sexp)).sort();
-  var bindableVarsToBind = _.filter(freeVars, function(v) {
-    return env.lookup(v);
-  });
-  var unbindableVars = _.filter(freeVars, function(v) {
-    return !env.lookup(v);
-  });
-  var unbindableEnv = {};
-  _.each(unbindableVars, function(v) {
-    unbindableEnv[v] = mkUnboundVariable();
+  var unbindables = {};
+  var varsToBind = [];
+  var bindings = [];
+  _.each(freeVars, function(varname) {
+    var val = env.lookup(varname);
+    if(val) {
+      varsToBind.push(mkidentifier(varname));
+      bindings.push(val);
+    } else {
+      unbindables[varname] = mkUnboundVariable();
+    }
   });
 
-  if(unbindableVars.length) {
-    sexp = lispy.substitute(unbindableEnv, sexp);
+  if(_.size(unbindables)) {
+    sexp = lispy.substitute(unbindables, sexp);
   }
 
-  if(bindableVarsToBind.length === 0) {
+  if(varsToBind.length === 0) {
     return sexp;
   }
   else {
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
-    var bindings   = _.map(bindableVarsToBind, function(v) { return env.lookup(v); });
-    var paramsSexp = _.map(bindableVarsToBind, function(v) { return mkidentifier(v); });
+    var paramsSexp = varsToBind;
     paramsSexp.type = types.list;
     var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];
     lambdaSexp.type = types.list;
