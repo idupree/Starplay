@@ -189,9 +189,9 @@ lispy.mkTopLevelEnvWithDefault = function(bindings, methodToCallIfVarnameNotFoun
     }
   };
 };
-// env: an environment
+// parentEnv: an environment
 // bindings: an object mapping varname to sexp
-lispy.mkEnvWithin = function(parentEnv, bindings) {
+lispy.mkSubEnv = function(parentEnv, bindings) {
   return {
     bindings: bindings,
     lookup: function(varname) {
@@ -203,7 +203,15 @@ lispy.mkEnvWithin = function(parentEnv, bindings) {
     }
   };
 };
-
+// parentEnv: an environment
+// unbindingsList: a list of variables to unbind
+lispy.mkSubEnvOmitting = function(parentEnv, unbindingsList) {
+  var unbindings = {};
+  _.each(unbindingsList, function(v) {
+    unbindings[v] = undefined;
+  });
+  return lispy.mkSubEnv(parentEnv, unbindings);
+};
 
 // == Builtin functions ==
 // Consider a JS var 'sexp' representing '(+ 2 3)';
@@ -574,7 +582,7 @@ lispy.betaReduceO_N = function(sexp) {
   // We need to substitute it everywhere except where it's
   // named in a let or lambda
   // [and except where it's quoted / part of a macro]
-  return lispy.substitute(substitutions, body);
+  return lispy.substitute(body, lispy.mkTopLevelEnv(substitutions));
 };
 
 // evaluates all beta-redexes not within a lambda (?)
@@ -726,25 +734,26 @@ lispy.strictBetaReduceO_N = function(sexp, env) {
 wait, does it mutate or return a new sexp? return a new sexp. there might be sharing
 of some tokens - we intend that they are never mutated by any code
 
-can 'fn' be bound? that is not guarded against.
+TODO can 'fn' be bound? that is not guarded against.
 */
-lispy.substitute = function(varsToSexpsMap, sexp) {
+lispy.substitute = function(sexp, env) {
+  var lookuped;
   if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
       var bindings = _.pluck(sexp[1], 'string');
-      var subMap = _.omit(varsToSexpsMap, bindings);
+      var subEnv = lispy.mkSubEnvOmitting(env, bindings);
       return keepMetaDataFrom(sexp, _.map(sexp, function(sub) {
-        return lispy.substitute(subMap, sub);
+        return lispy.substitute(sub, subEnv);
       }));
     }
     else {
       return keepMetaDataFrom(sexp, _.map(sexp, function(sub) {
-        return lispy.substitute(varsToSexpsMap, sub);
+        return lispy.substitute(sub, env);
       }));
     }
   }
-  else if(sexp.type === types.identifier && _.has(varsToSexpsMap, sexp.string)) {
-    return varsToSexpsMap[sexp.string];
+  else if(sexp.type === types.identifier && (lookuped = env.lookup(sexp.string))) {
+    return lookuped;
   }
   else { //other token
     return sexp;
@@ -793,7 +802,7 @@ lispy.bindFreeVars = function(sexp, env) {
   });
 
   if(_.size(unbindables)) {
-    sexp = lispy.substitute(unbindables, sexp);
+    sexp = lispy.substitute(sexp, lispy.mkTopLevelEnv(unbindables));
   }
 
   if(varsToBind.length === 0) {
