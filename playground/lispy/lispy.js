@@ -144,20 +144,80 @@ lispy.wrapNamedJSVal = function(name, v) {
 };
 
 
+// == Environments ==
+// These represent all variables in scope at a particular point.
+// An environment is a JS object with a 'lookup' method that takes
+// a varname (JS string) and returns the corresponding sexp if that
+// varname is in the environment, or undefined otherwise.
+//
+// Sexps returned by lookup must not contain free variables.
+// TODO: Must they be evaluated to some normal form?
+//
+// It is dubious but possible to make an environment that
+// changes over time.
+
+lispy.mkEmptyEnv = function() {
+  return {
+    lookup: function(varname) { return undefined; }
+  };
+};
+lispy.mkTopLevelEnv = function(bindings) {
+  return {
+    bindings: bindings,
+    lookup: function(varname) {
+      if(_.has(this.bindings, varname)) {
+        return this.bindings[varname];
+      } else {
+        return undefined;
+      }
+    }
+  };
+};
+// This is experimental/untested and may not be suitable;
+// it could be used to allow accesses to undefined variables
+// to automatically define them at top level with some default value.
+lispy.mkTopLevelEnvWithDefault = function(bindings, methodToCallIfVarnameNotFound) {
+  return {
+    bindings: bindings,
+    methodToCallIfVarnameNotFound: methodToCallIfVarnameNotFound,
+    lookup: function(varname) {
+      if(_.has(this.bindings, varname)) {
+        return this.bindings[varname];
+      } else {
+        return this.methodToCallIfVarnameNotFound(varname);
+      }
+    }
+  };
+};
+// env: an environment
+// bindings: an object mapping varname to sexp
+lispy.mkEnvWithin = function(parentEnv, bindings) {
+  return {
+    bindings: bindings,
+    lookup: function(varname) {
+      if(_.has(this.bindings, varname)) {
+        return this.bindings[varname];
+      } else {
+        return parentEnv.lookup(varname);
+      }
+    }
+  };
+};
+
+
 // == Builtin functions ==
 // Consider a JS var 'sexp' representing '(+ 2 3)';
 // sexp.type will be types.list.  '+' is sexp[0].
 // If the '+' in scope is
 //   {type: types.builtinFunction, value: f}
 // then the eval loop will call 'f(sexp, env)' where
-// env represents the variables in scope;
-// env is a JS object mapping identifier strings to sexps that
-// might be unevaluated but definitely contain no free variables.
+// env represents the variables in scope (see Environments).
 //
-// Builtin functions also cannot count on their arguments being
-// evaluated, and must do so if they wish to e.g. do math on their
-// arguments.  As a benefit, it is simple to write (if) as a builtin
-// function that does not evaluate both the true and false branches.
+// Builtin functions cannot count on their arguments being
+// evaluated, and must do so explicitly if they wish to e.g. do math
+// on their arguments.  As a benefit, it is simple to write 'if' as a
+// builtin function that does not evaluate both the true and false
+// branches.
 
 // These are convenience functions for use writing builtins.
 function evaluateToNumber(sexp, env) {
@@ -187,7 +247,7 @@ function modulo(num, mod) {
 
 // These are the typical set of builtins.
 // You can make them available to lispy programs by passing
-// builtinsAsLispyThings as the env parameter to the lispy code you evaluate.
+// builtinsEnv as the env parameter to the lispy code you evaluate.
 var builtins = {
   // We just offer binary ops currently, not the lisp pattern of
   // monoidal ops like '+', '*', 'or', 'and' accepting any number of
@@ -310,6 +370,7 @@ _.each(builtins, function(val, key) {
 });
 lispy.builtins = builtins;
 lispy.builtinsAsLispyThings = builtinsAsLispyThings;
+var builtinsEnv = lispy.builtinsEnv = lispy.mkTopLevelEnv(builtinsAsLispyThings);
 
 // TODO consider:
 //what if all composite types (fn, list, assoc) got names
@@ -536,14 +597,14 @@ lispy.isHeadBetaReducible = function(sexp) {
 };
 
 lispy.rep = lispy.readEvalPrint = function(str) {
-  return lispy.printSexp(lispy.evaluate(lispy.parseProgram(str), builtinsAsLispyThings));
+  return lispy.printSexp(lispy.evaluate(lispy.parseProgram(str), builtinsEnv));
 };
 
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
 // lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
 // lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
 
-//env is a {} from identifier (as plain string) to sexp.
+//TODO fix desc: env is an environment (see section above).
 //It is used to look up free variables.
 //(Strictly evaluated substitution e.g. betaReduceO_N
 // cannot implement recursion or letrec,
@@ -559,20 +620,21 @@ lispy.rep = lispy.readEvalPrint = function(str) {
 //returns the evaluated version of the sexp.
 lispy.evaluate = function(sexp, env) {
   if(arguments.length === 1) {
-    env = {};
+    env = lispy.mkEmptyEnv();
   }
   while(true) {
-    if(sexp.type === types.identifier && _.has(env, sexp.string)) {
+    var lookedup;
+    if(sexp.type === types.identifier && (lookedup = env.lookup(sexp.string))) {
       // substitute plain identifiers from env:
       //   ident
-      sexp = env[sexp.string];
+      sexp = lookedup;
     }
     else if(sexp.type === types.list && sexp.length >= 1 &&
-        sexp[0].type === types.identifier && _.has(env, sexp[0].string)) {
+        sexp[0].type === types.identifier && (lookedup = env.lookup(sexp[0].string))) {
       // substitute function names that are about to be called from env:
       //   (ident ...)
       var headEvaledSexp = shallowCopyArray(sexp);
-      headEvaledSexp[0] = env[sexp[0].string];
+      headEvaledSexp[0] = lookedup;
       sexp = headEvaledSexp;
     }
     else if(lispy.isHeadBetaReducible(sexp)) {
@@ -718,10 +780,10 @@ lispy.bindFreeVars = function(sexp, env) {
   // We sort this for determinacy's sake.
   var freeVars = _.keys(lispy.freeVarsIn(sexp)).sort();
   var bindableVarsToBind = _.filter(freeVars, function(v) {
-    return _.has(env, v);
+    return env.lookup(v);
   });
   var unbindableVars = _.filter(freeVars, function(v) {
-    return !_.has(env, v);
+    return !env.lookup(v);
   });
   var unbindableEnv = {};
   _.each(unbindableVars, function(v) {
@@ -737,7 +799,7 @@ lispy.bindFreeVars = function(sexp, env) {
   }
   else {
     //TODO implement 'let' as syntactic sugar for such immediately-applied-function
-    var bindings   = _.map(bindableVarsToBind, function(v) { return env[v]; });
+    var bindings   = _.map(bindableVarsToBind, function(v) { return env.lookup(v); });
     var paramsSexp = _.map(bindableVarsToBind, function(v) { return mkidentifier(v); });
     paramsSexp.type = types.list;
     var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];

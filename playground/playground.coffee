@@ -270,7 +270,7 @@ coffeeeval = (coffeescript, env, thisVal) ->
 lispyeval = (lispyscript, env) ->
   parsed = lispy.parseProgram lispyscript
   return ->
-    lispyvals = lispy.evaluate parsed, _.extend({
+    lispyvals = lispy.evaluate parsed, lispy.mkTopLevelEnv(_.extend({
       '@': lispy.wrapJSVal (tree, env) =>
         member = this[tree[1].string]
         if _.isFunction member
@@ -284,7 +284,7 @@ lispyeval = (lispyscript, env) ->
         else
           return lispy.wrapJSVal result
         #aha the ??? is becaue this '@' fn value is created every time, per obj.
-      }, lispy.builtinsAsLispyThings, env)
+      }, lispy.builtinsAsLispyThings, env))
     #console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
     if lispyvals.length > 0
       lispyval = lispyvals[lispyvals.length - 1]
