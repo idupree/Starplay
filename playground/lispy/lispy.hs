@@ -180,22 +180,22 @@ getChildNumber i ast = children ast !! i
 data Stack = 
 
 
-type Env = Map Ident LAST
+type Env = Map Ident AST
 -- this monad could also 'tick' and when it runs
 -- out of ticks, return.  except that moment won't
 -- be serializable?
 type EvalM = ReaderT Env CanFail
 
-evalToNumber :: LAST -> EvalM LispyNum
+evalToNumber :: AST -> EvalM LispyNum
 evalToNumber = undefined
-evalToBool :: LAST -> EvalM Bool
+evalToBool :: AST -> EvalM Bool
 evalToBool = undefined
-evalToAtom :: LAST -> EvalM Atom --I am lazy with implementing =
+evalToAtom :: AST -> EvalM Atom --I am lazy with implementing =
 evalToAtom = undefined
-eval :: LAST -> EvalM LAST --TODO return free var env needed?
+eval :: AST -> EvalM AST --TODO return free var env needed?
 eval = undefined
 
-builtinFunctions :: Map Ident ([LAST] -> EvalM LAST)
+builtinFunctions :: Map Ident ([AST] -> EvalM AST)
 builtinFunctions = Map.fromList $
   --[ ("+", \case [_,a,b] -> Number <$> ((+) <$> num a <*> num b); ast -> arityFail ast)
   [ ("+", binary Number (+) num)
@@ -242,8 +242,8 @@ builtinFunctions = Map.fromList $
     arityFail ast = inBase $ Err ("invalid arguments to builtin: " ++ showLList (fmap show ast))
     num = evalToNumber
     bool = evalToBool
-    unary op extr = \case [_,a] -> (noL . Literal . op) <$> extr a; ast -> arityFail ast
-    binary constr op extr = \case [_,a,b] -> (noL . Literal . constr) <$> (op <$> extr a <*> extr b); ast -> arityFail ast
+    unary op extr = \case [_,a] -> (Literal . op) <$> extr a; ast -> arityFail ast
+    binary constr op extr = \case [_,a,b] -> (Literal . constr) <$> (op <$> extr a <*> extr b); ast -> arityFail ast
 
 data LispyNum = LispyNum { numVal :: Rational, numIsExact :: Bool }
   deriving (Eq, Ord, Typeable, Data)
@@ -262,12 +262,13 @@ data Atom
     | Ident Ident
     | Boolean Bool
     | UnboundVariable
-    | BuiltinFunction { atomName :: String }--, atomFnVal :: LAST -> LAST }
+    | BuiltinFunction { atomName :: String }--, atomFnVal :: AST -> AST }
   deriving (Eq, Ord, Data, Typeable)--, Show, Read)
 --instance Eq Atom where
 --  Void == Void = True
 --  Number a b == Number a b = a
 
+{-
 --hmm
 noL :: a -> Located a
 noL = L NoSrcLoc
@@ -280,16 +281,17 @@ data SrcLoc = SrcLoc {
 data Located a = L { lLoc :: SrcLoc, unL :: a } deriving (Functor, Data, Typeable)
 type LAST = Located AST
 type LAtom = Located Atom
+-}
 
 data AST
-    = List [LAST]
-    | Program [LAST]
-    | Imperative [LAST]
-    | EnvAST Env LAST
+    = List [AST]
+    | Program [AST]
+    | Imperative [AST]
+    | EnvAST Env AST
     | Literal Atom
-    | Lambda { lambdaParams :: [Ident], lambdaBody :: LAST }
-    | Array [LAST]
-    | Dict [(LAST, LAST)]
+    | Lambda { lambdaParams :: [Ident], lambdaBody :: AST }
+    | Array [AST]
+    | Dict [(AST, AST)]
   deriving (Data, Typeable)
 
 -- this is the non-original-formatting-preserving version
@@ -310,15 +312,15 @@ instance Show Atom where
 -- doesn't require it to be #ed
 
 instance Show AST where
-  show (List as) = showLList (fmap (show.unL) as)
-  show (Program as) = List.intercalate "\n" (fmap (show.unL) as)
-  show (Imperative as) = showLList ("#do" : fmap (show.unL) as)
+  show (List as) = showLList (fmap show as)
+  show (Program as) = List.intercalate "\n" (fmap show as)
+  show (Imperative as) = showLList ("#do" : fmap show as)
   show (Literal a) = show a
-  show (Lambda params body) = showLList $ ["#fn", (showLList params), show (unL body)]
-  show (Array as) = showLList ("#array" : fmap (show.unL) as)
+  show (Lambda params body) = showLList $ ["#fn", (showLList params), show body]
+  show (Array as) = showLList ("#array" : fmap show as)
   show (EnvAST env a) = 
-instance (Show a) => Show (Located a) where
-  show (L _ a) = show a --hm
+--instance (Show a) => Show (Located a) where
+--  show (L _ a) = show a --hm
 
 freeVarsIn :: AST -> Set Ident
 freeVarsIn = para $ \ast (Set.unions -> vars) ->
@@ -327,14 +329,14 @@ freeVarsIn = para $ \ast (Set.unions -> vars) ->
     Literal (Ident i) -> Set.insert i vars
     _ -> vars
 
-bindFreeVars :: Env -> LAST -> LAST
-bindFreeVars env lAST@(L l ast) =
+bindFreeVars :: Env -> AST -> AST
+bindFreeVars env ast =
   let free = freeVarsIn ast
   in if Set.null free
-    then lAST
-    else L l $ EnvAST (Map.intersection env
-                        (Map.fromSet (const ()) free))
-                      lAST
+    then ast
+    else EnvAST (Map.intersection env
+                  (Map.fromSet (const ()) free))
+                ast
 
 schemeIdentifierChar :: P.Parser Char
 schemeIdentifierChar = P.satisfy (\c -> inClass "-!$%&*+.\\/:<=>?@^_~" c
