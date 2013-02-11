@@ -1,9 +1,10 @@
 {-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, LambdaCase #-}
+  ViewPatterns, LambdaCase, OverloadedStrings #-}
 
 module Lispy where
 
-import Data.Text as Text
+import qualified Data.Char as Char
+--import Data.Text as Text
 import Data.Ratio
 import Data.List as List
 import Data.Map.Strict as Map
@@ -39,7 +40,7 @@ builtins = Map.union fns vals
 
 -- Let's try: instead of EnvAST, anything that might need it
 -- is named and added to the global environment.
-
+{-
 -- Each function e
 data PathToCodeInstr = PathToCodeInstr {-GlobalEnv-} [Int]
 data FunctionEvaluation = FunctionEvaluation
@@ -165,10 +166,12 @@ data FunctionEvaluation = FunctionEvaluation
   -- I wonder if thing can be shown something like http://www.telescopictext.com/
   
   -- laziness is a boundary like fn is. fn, if.
-
+-}
 data PathToCodeLiteral = PathToCodeLiteral Ident [Int]
 getCodeLiteralE :: Env -> PathToCodeLiteral -> AST
-getCodeLiteralE env (PathToCodeLiteral i path) = Map.lookup i env
+getCodeLiteralE env (PathToCodeLiteral i path) = case Map.lookup i env of
+  Just ast -> getCodeLiteralP path ast
+  Nothing -> error "invalid path envname!"
 
 getCodeLiteralP :: [Int] -> AST -> AST
 getCodeLiteralP [] ast = ast
@@ -177,7 +180,7 @@ getCodeLiteralP (idx:is) ast = getCodeLiteralP is (getChildNumber idx ast)
 getChildNumber :: Int -> AST -> AST
 getChildNumber i ast = children ast !! i
 
-data Stack = 
+--data Stack = 
 
 
 type Env = Map Ident AST
@@ -318,7 +321,7 @@ instance Show AST where
   show (Literal a) = show a
   show (Lambda params body) = showLList $ ["#fn", (showLList params), show body]
   show (Array as) = showLList ("#array" : fmap show as)
-  show (EnvAST env a) = 
+  --show (EnvAST env a) = 
 --instance (Show a) => Show (Located a) where
 --  show (L _ a) = show a --hm
 
@@ -340,12 +343,12 @@ bindFreeVars env ast =
 
 schemeIdentifierChar :: P.Parser Char
 schemeIdentifierChar = P.satisfy (\c -> inClass "-!$%&*+.\\/:<=>?@^_~" c
-                                        || isAlphaNum c)
+                                        || Char.isAlphaNum c)
 --P.takeWhile1 for Text return
 
 parseAtom :: P.Parser Atom
 parseAtom = skipSpace >> P.choice
-  [ fmap (\rat -> LispyNum rat True) rational
+  [ fmap (\rat -> Number (LispyNum rat True)) rational
   , fmap (\str -> Ident str) $ many1 schemeIdentifierChar
   , fmap (const Void) $ string "#void"
   , fmap (const (Boolean True)) $ string "#true"
@@ -356,18 +359,20 @@ parseAtom = skipSpace >> P.choice
   ]
 
 parseSexp :: P.Parser AST
-parseSexp = parseList <|> parseAtom
+parseSexp = fmap List parseList <|> fmap Literal parseAtom
 
 parseList :: P.Parser [AST]
 parseList = do
-  P.char '('
+  _ <- P.char '('
   asts <- P.sepBy parseSexp (P.skipMany1 P.space)
-  P.char ')'
-  return (asts
-  
+  _ <- P.char ')'
+  return asts
 
-parseLispy :: Text -> P.Result AST
-parseLispy = undefined
+parseProgram :: P.Parser [AST]
+parseProgram = P.sepBy parseSexp (P.skipMany1 P.space)
+
+parseLispy :: P.Parser AST
+parseLispy = fmap Program parseProgram
 
 
 
