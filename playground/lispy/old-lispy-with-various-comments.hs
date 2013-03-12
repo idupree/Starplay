@@ -37,6 +37,55 @@ main :: IO ()
 main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 
 
+--type ArraySeq a = Array Int a
+--listToArraySeq :: [a] -> ArraySeq a
+--listToArraySeq as = listArray (0, length as - 1) as
+
+-- Every layer of nesting gets a scope, even in
+-- expressions that don't bind any variables.
+-- I'll worry about mutable local variables later.
+-- When there is just one execution ptr into this fn instantiation,
+-- functional changes to this scope can change them (inefficiently);
+-- when there's not (closures) we were gonna turn them into redirections
+-- to a global(I think) store
+data Scope =
+  Scope { atThisScopeLevel :: Map {Ident/Int} Value
+        , reversedChildrenComputedSoFar :: [Value]
+        , parentScope :: Scope
+        , indexInParent :: Int
+        , astCorrespondingToScope :: AST
+        }
+  | GlobalScope Env
+  
+data Stack = [Scope] -- first elem is top of stack
+
+--if we don't de Bruijn ize anything :)
+
+lookupInScope :: Ident -> Scope -> Atom
+lookupValueInScope :: Ident -> Scope -> AST-- ?
+
+-- this type sig can work if single-threaded, I think
+-- What about errors?
+-- In vs Out ?
+data LispyState = LispyState
+-- original Scope is what we're about to evaluate
+singleStep :: (LispyState, Scope) -> (LispyState, Scope)
+singleStep (st, scope) = case astCorrespondingToScope scope of
+  -- parent scope, next if any. hmm.  and recording the sub value.
+  List ast -> {- assert all children already computed -}
+    let orderedChildren@(fn, args) = reverse (reversedChildrenComputedSoFar scope)
+    in case fn of
+      BuiltinFunction fnname -> -- TODO ! error
+        (builtinFunctions Map.! fnname)
+    stepInto
+    | Program [AST]
+    | Imperative [AST]
+    | EnvAST Env AST
+    | Literal Atom
+    | Lambda { lambdaParams :: [Ident], lambdaBody :: AST }
+    | Array [AST]
+    | Dict [(AST, AST)]
+
 type Ident = String
 
 builtins :: Map Ident Atom --or AST?
@@ -88,8 +137,59 @@ data BuiltinFunction = Plus | Minus | Times | Negate
   | Equal | NotEqual | And | Or | Not
   
 data BuiltinSpecialForm = Lambda | If | Let | Loop | While | For
-  | Goto | Label | Tailcall | Return | Do | Set
+  | Goto | Label | Tailcall | Return | Do
 
+builtinFunctions :: Map Ident ([AST] -> EvalM Atom)
+builtinFunctions = Map.fromList $
+  --[ ("+", \case [_,a,b] -> Number <$> ((+) <$> num a <*> num b); ast -> arityFail ast)
+  [ ("+", binary Number (+) num)
+  , ("-", binary Number (-) num)
+  , ("*", binary Number (*) num)
+  , ("negate", unary (Number . negate) num)
+
+  , ("<", binary Boolean (<) num)
+  , (">", binary Boolean (>) num)
+  , ("<=", binary Boolean (<=) num)
+  , (">=", binary Boolean (>=) num)
+
+  , ("and", binary Boolean (&&) bool)
+  , ("or", binary Boolean (||) bool)
+  , ("not", unary (Boolean . not) bool)
+  
+  , ("=", binary Boolean (==) evalToAtom)
+  , ("not=", binary Boolean (/=) evalToAtom)
+  {-  Blargh these are now keywords
+      We could change that by treating 1st arg specially but aah
+  , ("if", \case
+      [_, cond, t, f] -> do
+        b <- bool cond
+        return $! if b then t else f
+      ast -> arityFail ast)
+      -}
+  , ("array", undefined)
+  ]
+{-  [ easy "+" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a+b
+  , easy "-" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a-b
+  , easy "*" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a*b
+  --, easy "#mod" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a3-b
+  , easy "negate" $ \ast -> do [_, Number a] <- ast; return $ Number $ negate a
+  
+  , easy "<" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a<b
+  , easy ">" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a>b
+  , easy "<=" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a<=b
+  , easy ">=" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a>=b
+
+  , easy "and" $ \ast -> do [_, Boolean a, Boolean b] <- ast; return $ Boolean $ a&&b
+  , easy "or" $ \ast -> do [_, Boolean a, Boolean b] <- ast; return $ Boolean $ a||b
+  , easy "not" $ \ast -> do [_, Boolean a] <- ast; return $ Boolean $ not a
+  ]-}
+  where
+    --easy name f = ("#"++name, \ast -> f ast <|> arityFail ast)
+    arityFail ast = inBase $ Err ("invalid arguments to builtin: " ++ showLList (fmap show ast))
+    num = evalToNumber
+    bool = evalToBool
+    unary op extr = \case [_,a] -> (Literal . op) <$> extr a; ast -> arityFail ast
+    binary constr op extr = \case [_,a,b] -> (Literal . constr) <$> (op <$> extr a <*> extr b); ast -> arityFail ast
 
 data LispyNum = LispyNum { numVal :: Rational, numIsExact :: Bool }
   deriving (Eq, Ord, Typeable, Data)
@@ -183,7 +283,7 @@ singleStep state@(LispyState _ []) = state
 singleStep state@(LispyState globals stack@(
     frame@(StackFrame funcBody nextStepToEval alreadyComputed)
     : frames
-  )) = case nextStepToEval of
+  )) = case funcBody of
     Literal atom -> atom
     FnCall (Vector.null -> True) -> error "bug: fncall with no function"
     FnCall asts = let fn = Vector.head asts; args = Vector.tail asts in
@@ -208,247 +308,15 @@ singleStep state@(LispyState globals stack@(
           LispyState globals (
             (StackFrame (fnBody ast) (fnEntrance ast) Map.empty)
             : stack)
-    callAtomic (BuiltinFunction f) = callBuiltinFunction f
+    callAtomic (BuiltinFunction f) =
 
--- | fnEntrance takes the AST node of a lambda expression and returns
--- the AST node of the first evaluation step that must be done as part of
--- evaluating that lambda function.  For example, given
---   (fn (x) (+ x (+ x x)))
--- This plus  ^  is the first expression in the function that must be
--- evaluated.  We treat all functions/operators as just another value
--- that must be evaluated as function-evaluation-time (we are a Lisp-1),
--- but all builtin syntax ('fn', 'if', etc.) is treated specially
--- (we are not really a lisp: we do not have macros).
 fnEntrance :: AST -> AST
 fnEntrance (FnCall (Vector.toList -> [Literal (BuiltinSyntax Fn), params, _])) =
   sastNextASTNodeToExecuteAfterExecutingThisOne params
-
--- | fnBody takes a lambda and returns the body node;
--- (fn (x) (+ x x)) --> (+ x x)
--- I only support lambdas with a single body node.  Imperative functions
--- with more than one body node can be trivially emulated with "do"
--- ("begin" from Scheme):
--- (fn (x) (doStuff) (+ x x)) could be (fn (x) (do (doStuff) (+ x x))).
---
--- Implementing translations like this is not wholly trivial.  We use
--- AST node indices to represent the instruction pointer.  This shallow
--- approach makes it unnecessarily hard to represent single builtins
--- that do multiple things.  For example, (while (< x 3) (set x (+ x 1)))
--- might be represented in a bytecode:
--- (syntax: pseudocode in SSA form)
--- 1: LABEL begin
--- 2: %a <- GET x
--- 3: %b <- LESS_THAN %a 3
--- 4: GOTO_IF_NOT end %b
--- 5: %c <- GET x
--- 6: %d <- PLUS %c 1
--- 7: SET x %d
--- 8: GOTO begin
--- 9: LABEL end
--- Both code locations "1" and "4" are worth distinguishing, but the AST
--- does not let us do that!  The condition is "3" ("2" is a sub part of
--- evaluating the condition), and the body is "7" (5-7 if including
--- sub-expressions).  We could say that "1" corresponds to the whole AST
--- and "4" to the "while" identifier node, or vice versa, but that's just
--- a hack that happens to work.  It might not work for a more complex
--- operator such as a C-style-"for" expression.
---
--- labels can be truly a label instead of a code location: yeah
--- non-conditional gotos could be an annotation of "next instruction ptr" instead: nah
-
-
-data InstructionPointer =
-data InstructionPointerMode = Entering |
-
--- If bytecode and AST are made isomorphic then we can just *have* the bytecode
--- trivially in Haskell.
--- They don't quite correspond, though.
--- We can artificially make every AST node have at least one bytecode node
--- (that could be a NOP) if we wanted.  If it was in a meaningful place, that
--- might be useful.
--- There's no reason to make bytecode transformable to AST because it can just
--- keep references into the original AST.
-
--- (In terms of actually using Lua code, upvalues are probably the trickiest
---  to adapt to us)
--- and nonmutability so snapshots are trivial
-
--- ok debuggability will be less well demonstrated than steppability,
--- a future-work thing that this framework allows.
--- similar for space limit
-
-data BytecodeInstruction
-  = CALL (Vector VarIdx)
-  | TAILCALL (Vector VarIdx)
-  | 
--- The compiled program contains a sequence of bytecodes
--- as well as references to the AST nodes they come from.
--- Intermediates: hm
--- Current system is a vector/AST idx (equivalent for this)
--- duplicated for each stack frame
--- RET
--- TAILCALL
--- CALL
--- if+tailcall
--- pushframe
--- goto
--- MAKE_CLOSURE (Set VarIdx) ASTIdx
---
--- PUSHFRAME (Map VarIdx{in new frame} VarIdx{in this frame})
--- REPLACEFRAME (Map VarIdx{in new frame} VarIdx{in this frame})
--- POPFRAME
--- ret...
--- serialize as the state is a
--- PUSHFRAME (map...) bytecodeloc
--- oh wait that does not encode the whole stack :/
--- well i mean i can just serialize it
--- but it would be nice if it were a valid program somehow.
--- hmm with multiple recursion i'm not going to be able to
--- serialize it into anything nice looking with #val.
--- though it is doable without recursion.
--- So; security of passing around this serialization:
--- it could point weird places in the bytecode or have loops
--- or have variables defined that shouldn't be or undefined
--- that should be.
--- I *think* everything here is checked and finite, but
--- rarely tested conditions are risky.  A fuzz tester would
--- be useful.
--- Single-steppable and visualizable
---
--- Wait, PUSHFRAME can't know the destination's arg names.
--- BECAUSE IT MIGHT BE A BUILTIN!
-
--- You can name something anytime it's created, store that
--- name in the heap next to the data, & also store as a key
--- in a globals.
--- Can we efficiently do escape analysis with it? Hmm. Not easily;
--- we could have a reference to a table that we don't know whether
--- it's local? hm er.  each composite created could have a reference
--- to the stack frame it was created in, and vice versa, and if it's
--- put into a composite (including _GLOBALS) that is not within this
--- stack frame then its scope is lifted to that frame (or it's made
--- global maybe)  (or if the stack frame returns).
--- So I think we can basically do this all in the basic lua framework
-type BytecodeIdx = Int
-data CompiledProgram = CompiledProgram
-  { progBytecodes :: Vector (BytecodeInstruction, SituatedAST))
--- whoops when it is programmatic, just making numeric targets
--- makes more sense
---  , progLabels :: Map BytecodeIdx
--- Ah goto:s can be relative to the GOTO instruction to make code relocatable
-  , program :: SituatedAST
-  }
-
--- making TAILCALL: perhaps a postprocessing pass?
--- top-down, tail if:
--- * if root node
--- * if parent is tail 'do' and we are its last child
--- * if parent is tail 'if' and we are its second or third child
--- * if parent is lambda
-
--- goto can be to the ast idx at first, then replaced
-
--- use Data.Sequence or difflists
--- how does let or arg-binding work
--- current stack frame astidx indexed
--- 'call' can do special stuff
-compile :: SituatedAST -> CompiledProgram
-compile ast = case ast of
-  "()" -> [CALL []]
-  "if" a b c -> 
-
 fnBody :: AST -> AST
 fnBody (FnCall (Vector.toList -> [Literal (BuiltinSyntax Fn), _, body])) = body
-
 --data FnASTView = FnASTView 
 --viewFnAST :: AST -> 
-
--- Error reporting is currently done by throwing an exception.
--- For example, evaluating (= 1) does not pass enough arguments
--- to the equality-checking operator.  It might lead to indexing
--- a vector with an out-of-bounds index (which throws an exception
--- in Haskell).
---
--- A serious implementation would check for these errors and
--- give a user-friendly message.  It's not theoretically difficult
--- to do so; I omit it here.
-
--- An idiomatic Haskell program might use a monad to track state,
--- rather than pass and return LispyState explicitly.  I choose
--- to pass it explicitly here for explicitness.
-
--- | callBuiltinFunction assumes that all its parameters have been
--- evaluated.  This is guaranteed by the preprocessing that writes
--- sastNextASTNodeToExecuteAfterExecutingThisOne (TODO explain)
-callBuiltinFunction :: BuiltinFunction -> Vector ASTIdx -> LispyState -> LispyState
-callBuiltinFunction builtinFunction params state@(LispyState globals stack@(
-    frame@(StackFrame funcBody nextStepToEval alreadyComputed)
-    : frames
-  )) = let
-      arg :: Int -> AtomicValue
-      arg i = Map.lookup (params Vector.! i) alreadyComputed
-      num :: ASTIdx -> LispyNum
-      num = case arg i of Number n -> n
-      binaryNumericOp :: (LispyNum -> LispyNum -> LispyNum) -> LispyState
-      binaryNumericOp op = LispyState globals (op (num 1) (num 2))
-    case builtinFunction of
-  Plus -> binaryNumeric (+)
-  LispyState globals
-Plus | Minus | Times | Negate
-  | LessThan | LessEqual | GreaterThan | GreaterEqual
-  | Equal | NotEqual | And | Or | Not
-builtinFunctions :: Map Ident ([AST] -> EvalM Atom)
-builtinFunctions = Map.fromList $
-  --[ ("+", \case [_,a,b] -> Number <$> ((+) <$> num a <*> num b); ast -> arityFail ast)
-  [ ("+", binary Number (+) num)
-  , ("-", binary Number (-) num)
-  , ("*", binary Number (*) num)
-  , ("negate", unary (Number . negate) num)
-
-  , ("<", binary Boolean (<) num)
-  , (">", binary Boolean (>) num)
-  , ("<=", binary Boolean (<=) num)
-  , (">=", binary Boolean (>=) num)
-
-  , ("and", binary Boolean (&&) bool)
-  , ("or", binary Boolean (||) bool)
-  , ("not", unary (Boolean . not) bool)
-
-  , ("=", binary Boolean (==) evalToAtom)
-  , ("not=", binary Boolean (/=) evalToAtom)
-  {-  Blargh these are now keywords
-      We could change that by treating 1st arg specially but aah
-  , ("if", \case
-      [_, cond, t, f] -> do
-        b <- bool cond
-        return $! if b then t else f
-      ast -> arityFail ast)
-      -}
-  , ("array", undefined)
-  ]
-{-  [ easy "+" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a+b
-  , easy "-" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a-b
-  , easy "*" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a*b
-  --, easy "#mod" $ \ast -> do [_, Number a, Number b] <- ast; return $ Number $ a3-b
-  , easy "negate" $ \ast -> do [_, Number a] <- ast; return $ Number $ negate a
-
-  , easy "<" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a<b
-  , easy ">" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a>b
-  , easy "<=" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a<=b
-  , easy ">=" $ \ast -> do [_, Number a, Number b] <- ast; return $ Boolean $ a>=b
-
-  , easy "and" $ \ast -> do [_, Boolean a, Boolean b] <- ast; return $ Boolean $ a&&b
-  , easy "or" $ \ast -> do [_, Boolean a, Boolean b] <- ast; return $ Boolean $ a||b
-  , easy "not" $ \ast -> do [_, Boolean a] <- ast; return $ Boolean $ not a
-  ]-}
-  where
-    --easy name f = ("#"++name, \ast -> f ast <|> arityFail ast)
-    arityFail ast = inBase $ Err ("invalid arguments to builtin: " ++ showLList (fmap show ast))
-    num = evalToNumber
-    bool = evalToBool
-    unary op extr = \case [_,a] -> (Literal . op) <$> extr a; ast -> arityFail ast
-    binary constr op extr = \case [_,a,b] -> (Literal . constr) <$> (op <$> extr a <*> extr b); ast -> arityFail ast
-
 
 -- map keys in-language take keys by-value, by fiat!
 --   #copy
