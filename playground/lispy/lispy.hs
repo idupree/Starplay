@@ -37,6 +37,163 @@ main :: IO ()
 main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 
 
+-- |
+-- bcResultName is a binding for the result of the call, permitting
+-- later code to use the result value.
+--
+-- bcRelativeDestination is relative to the next instruction, e.g.
+-- "GOTO 0" is equivalent to a NOP.  For MAKE_CLOSURE, it points to
+-- the first instruction of the created function.
+data BytecodeInstruction
+  = CALL { bcResultName :: VarIdx, bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
+  | TAILCALL { bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
+  | LITERAL { bcResultName :: VarIdx, bcLiteralValue :: AtomicValue }
+  | NAME { bcResultName :: VarIdx, bcOriginalName :: VarIdx }
+  | RETURN { bcOriginalName :: VarIdx }
+  | MAKE_CLOSURE { bcResultName :: VarIdx, bcVarsInClosure :: Set VarIdx, bcRelativeDestination :: Int }
+  | GOTO { bcRelativeDestination :: Int }
+  | GOTO_IF_NOT { bcRelativeDestination :: Int, bcConditionName :: VarIdx }
+  --UNTIL
+  deriving (Eq, Ord, Show)
+
+data CompiledProgram = CompiledProgram
+  { progBytecodes :: Vector (BytecodeInstruction, SituatedAST))
+-- whoops when it is programmatic, just making numeric targets
+-- makes more sense
+--  , progLabels :: Map BytecodeIdx
+-- Ah goto:s can be relative to the GOTO instruction to make code relocatable
+  , program :: SituatedAST
+  }
+
+-- | TODO: excludes negative scoped vars used (non-closure parameter uses)
+scopedVarsUsed :: (Foldable f) => f BytecodeInstruction -> Set VarIdx
+scopedVarsUsed = foldMap (\instr -> case instr of
+    CALL _ func args = mappend (Set.singleton func) (foldMap Set.singleton args)
+    TAILCALL func args = mappend (Set.singleton func) (foldMap Set.singleton args)
+    LITERAL _ = mempty
+    NAME _ originalName = Set.singleton originalName
+    RETURN originalName = Set.singleton originalName
+    MAKE_CLOSURE _ vars _ = vars
+    GOTO _ = mempty
+    GOTO_IF_NOT _ condition = Set.singleton condition
+  )
+
+data CompiledProgram = CompiledProgram {
+  programBytecode :: Vector (ASTIdx, BytecodeInstruction),
+  programAST :: AST
+  }
+
+-- how does let or arg-binding work
+-- current stack frame astidx indexed
+-- 'call' can do special stuff
+
+compile :: SituatedAST -> CompiledProgram
+compile ast = Vector.fromList . Seq.toList . compile'
+  (CompileScope Map.empty True)
+
+data CompileScope = CompileScope
+  { compileScopeEnv :: Map String ASTIdx
+  -- | when compileScopeIsTailPosition, the returned code
+  -- is expected to return or tailcall, never to let the
+  -- end of the returned code-block be reached.
+  , compileScopeIsTailPosition :: Bool   --Maybe ASTIdx
+  }
+
+-- We use 'Seq' (Data.Sequence) because it has O(1) cons and snoc
+-- and length, and O(log n) concatenation.
+compile' :: CompileScope -> SituatedAST -> Seq (ASTIdx, BytecodeInstruction)
+compile' scope ast = let
+  instr i = Seq.singleton (astIdx ast, i)
+  in 
+  case ast of
+  ASTAtomicVal v -> mconcat [
+    instr (LITERAL (astIdx ast) v),
+    if compileScopeIsTailPosition scope
+    then instr (RETURN (astIdx ast))
+    else mempty
+    ]
+  ASTApply list -> case head list of
+    --[] -> LITERAL
+    "if" -> case args of
+      --[cond, then_] ->
+      [cond, then_, else_] -> let
+        condCode = compile' scope{compileScopeIsTailPosition=False} cond
+        thenCode = compile' scope then_
+        elseCode = compile' scope else_
+        elseCode2 = if compileScopeIsTailPosition scope
+          then elseCode
+          else mconcat [
+            elseCode,
+            instr (NAME (astIdx ast) (astIdx else_))
+            ]
+        thenCode2 = if compileScopeIsTailPosition scope
+          then thenCode
+          else mconcat [
+            thenCode,
+            instr (NAME (astIdx ast) (astIdx then_)),
+            instr (GOTO (length elseCode))
+            ]
+        in mconcat [
+          condCode,
+          Seq.singleton (GOTO_IF_NOT (length thenCode2) (astIdx cond)),
+          thenCode2,
+          elseCode
+          ]
+    "letrec" -> case args of
+      [bindings, result] -> let
+        bindingEnv = Map.fromList
+          (map (\ (varname, expr) -> (varname, astIdx expr)) bindings)
+        resultScope = scope { compileScopeEnv =
+          (Map.unions bindingEnv (compileScopeEnv scope)) }
+        bindingsCode = map (compile' resultScope . snd) bindings
+        resultCode = compile' resultScope result
+        in mconcat [
+          bindingsCode,
+          resultCode,
+          if compileScopeIsTailPosition scope
+          then mempty
+          else instr (NAME (astIdx ast) (astIdx result))
+          ]
+    "lambda" -> case args of
+      [params, body] -> let
+        bindingEnv = Map.fromList
+          (zipWith (\paramNum varname -> (varname, -paramNum)) [1..] params)
+        bodyScope = scope {
+          compileScopeEnv = (Map.unions bindingEnv (compileScopeEnv scope)),
+          compileScopeIsTailPosition = True
+          }
+        bodyCode = compile' bodyScope result
+        bodyClosureUses = Set.intersection (compileScopeEnv scope)
+                                          (scopedVarsUsed bodyCode)
+        in mconcat [
+          instr (MAKE_CLOSURE bodyClosureUses 1),
+          instr (GOTO (length resultCode)),
+          bodyCode
+          ]
+    "do" -> case reverse args of
+      (last : (reverse -> init)) -> mconcat [
+        foldMap (compile' scope{compileScopeIsTailPosition=False}) init,
+        compile' scope last,
+        if compileScopeIsTailPosition scope
+        then mempty
+        else instr (NAME (astIdx ast) (astIdx last))
+        ]
+    func -> let
+      funcCode = compile' scope{compileScopeIsTailPosition=False} func
+      argsCode = map (compile' scope{compileScopeIsTailPosition=False}) args
+      call = if compileScopeIsTailPosition scope
+        then TAILCALL
+        else CALL (astIdx ast)
+      in mconcat [
+        funcCode,
+        argsCode,
+        instr (call (astIdx func) (map astIdx args))
+        ]
+
+
+
+
+
 type Ident = String
 
 builtins :: Map Ident Atom --or AST?
@@ -277,10 +434,20 @@ data InstructionPointerMode = Entering |
 -- a future-work thing that this framework allows.
 -- similar for space limit
 
-data BytecodeInstruction
-  = CALL (Vector VarIdx)
-  | TAILCALL (Vector VarIdx)
-  | 
+-- program: letrec, e.g.
+{-
+ (plusone (lambda (x) (+ x 1))
+ (factorial (lambda (x) (if (= x 0) 1 (* x (factorial (- x 1))))))
+ (one 1)  ;haha
+-}
+-- and then the body is whatever you want to run
+-- hum, init time, literals can have code.
+-- maybe it really is letrec - the last thing is just the last thing
+-- Also is prepended with (+ #+) and such: all the builtin functions
+
+
+--hmm we could make all literals always be in all envs
+
 -- The compiled program contains a sequence of bytecodes
 -- as well as references to the AST nodes they come from.
 -- Intermediates: hm
@@ -330,14 +497,6 @@ data BytecodeInstruction
 -- global maybe)  (or if the stack frame returns).
 -- So I think we can basically do this all in the basic lua framework
 type BytecodeIdx = Int
-data CompiledProgram = CompiledProgram
-  { progBytecodes :: Vector (BytecodeInstruction, SituatedAST))
--- whoops when it is programmatic, just making numeric targets
--- makes more sense
---  , progLabels :: Map BytecodeIdx
--- Ah goto:s can be relative to the GOTO instruction to make code relocatable
-  , program :: SituatedAST
-  }
 
 -- making TAILCALL: perhaps a postprocessing pass?
 -- top-down, tail if:
@@ -348,14 +507,22 @@ data CompiledProgram = CompiledProgram
 
 -- goto can be to the ast idx at first, then replaced
 
+--TAIL: end with RETURN or TAILCALL
+
 -- use Data.Sequence or difflists
--- how does let or arg-binding work
--- current stack frame astidx indexed
--- 'call' can do special stuff
-compile :: SituatedAST -> CompiledProgram
-compile ast = case ast of
-  "()" -> [CALL []]
-  "if" a b c -> 
+
+--er void, true, false can all just be reserved varnames
+--oh wait that made the localization harder
+--but so does 'if' then
+
+-- ASTIdx of return value? n/a? ok
+
+--getting the ASTIdx of result value right
+--compileTail :: CompileScope -> SituatedAST -> CompiledProgram
+--compileNonTail :: CompileScope -> SituatedAST -> CompiledProgram
+
+-- I'll just inefficiently have tail do/if bits in non-tail position
+-- rebind their result vals.  It makes debugger-ing potentially nicer
 
 fnBody :: AST -> AST
 fnBody (FnCall (Vector.toList -> [Literal (BuiltinSyntax Fn), _, body])) = body
