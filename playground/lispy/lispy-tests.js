@@ -15,7 +15,12 @@ lispy.test = function() {
   // REP: read, eval, print
   function testREP(exprStr) {
     var expr = lispy.parseSexp(exprStr);
-    var result = lispy.evaluate(expr, lispy.builtinsEnv);
+    var env = lispy.builtinsEnv;
+    var completeEnv = lispy.mkTopLevelEnvWithDefault(
+                              lispy.builtinsAsLispyThings,
+                              lispy.mkUnboundVariable);
+    var rawResult = lispy.evaluate(expr, env);
+    var result = lispy.substitute(rawResult, completeEnv);
     var resultStr = lispy.printSexpNonWhitespacePreserving(result);
     return resultStr;
   }

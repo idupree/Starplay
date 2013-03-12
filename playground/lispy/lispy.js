@@ -15,6 +15,9 @@ var assert = function(b, str) {
   }
 };
 
+// TODO testsuite
+// TODO consistent } else { style
+
 // Tokenizing and parsing create abstract-syntax-tree objects
 // (S-expressions, or sexps) which are the main internal representation
 // of the program.
@@ -95,7 +98,7 @@ function mkbool(b) {
 function mkidentifier(s) {
   return { type: types.identifier, string: s };
 }
-function mkUnboundVariable() {
+var mkUnboundVariable = lispy.mkUnboundVariable = function() {
   return { type: types.unboundVariable, string: '#unbound-variable' };
 }
 function mkfn(f) {
@@ -355,7 +358,7 @@ var builtins = {
   'array': function(sexp, env) {
     var result = [];
     _.each(sexp.slice(1), function(v) {
-      result.push(lispy.evaluate(v, env));
+      result.push(lispy.bindFreeVars(lispy.evaluate(v, env), env));
     });
     return mkarray(result);
   }
@@ -704,7 +707,7 @@ lispy.evaluate = function(sexp, env) {
       break;
     }
   }
-  sexp = lispy.bindFreeVars(sexp, env);
+  //sexp = lispy.bindFreeVars(sexp, env);
   return sexp;
 };
 
