@@ -306,6 +306,10 @@ type LispyNum = Int
 type LispyParser = P.Parsec LocText ASTIdx
 
 
+parseWhitespaceAndComments :: LispyParser ()
+parseWhitespaceAndComments =
+  P.skipMany (P.skipMany1 P.space <|>
+    (P.char ';' >> P.skipMany (P.noneOf "\n\r")))
 
 schemeIdentifierChar :: LispyParser Char
 schemeIdentifierChar = P.satisfy (\c ->
@@ -366,7 +370,7 @@ parseList = do
 
 parseSexp :: LispyParser (Located AST)
 parseSexp = do
-  P.skipMany P.space
+  parseWhitespaceAndComments
   parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression"
 
 parseWithLocation :: LispyParser a -> LispyParser (Located a)
@@ -395,7 +399,7 @@ doParse :: LispyParser a -> P.SourceName -> Text -> Either P.ParseError a
 doParse parser sourceName text = let
     fullParser = do
       result <- parser
-      P.skipMany P.space
+      parseWhitespaceAndComments
       P.eof
       return result
   in
