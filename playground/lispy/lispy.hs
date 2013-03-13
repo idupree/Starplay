@@ -8,9 +8,11 @@ module Main where
 
 --import Control.Exception
 --import System.Timeout
+import System.Environment
 
 import qualified Data.Char as Char
 import Data.Text as Text
+import qualified Data.Text.IO
 --import Data.Ratio
 import Data.List as List
 import Data.Vector as Vector
@@ -42,12 +44,17 @@ testEval expr result = do
 --main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 
 main :: IO ()
-main = let
-  parsed = doParse parseSexp "test str"
+main = do
+  args <- getArgs
+  let filename = case args of
+        [] -> "test.scm"
+        [name] -> name
+        _ -> error "too many command line arguments"
+  inputText <- Data.Text.IO.readFile filename
+  let parsed = doParse parseSexp filename inputText
     --"abc (d  e 34) (())"
-    "(lambda (x y z) (x y (x z)))"
-  compiled = case parsed of Right ast -> compile ast
-  in do
+    --"(lambda (x y z) (x y (x z)))"
+  let compiled = case parsed of Right ast -> compile ast
   print parsed
   putStr (showProgramBytecode (programBytecode compiled))
 
