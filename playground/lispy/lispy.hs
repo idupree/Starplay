@@ -4,6 +4,8 @@
 -- TODO LambdaCase is 7.6+
 
 --module Lispy where
+-- Probably should be split into modules Lispy.*:
+--  Parse, Compile, Interpret
 module Main where
 
 --import Control.Exception
