@@ -138,7 +138,8 @@ data CompiledProgram = CompiledProgram
   }
 instance Show CompiledProgram where
   showsPrec _ (CompiledProgram bytecode (L progSource _) astsByIdx) =
-    shows (sourceText progSource) . showChar '\n' .
+    showString (Text.unpack (sourceText progSource)) .
+    showChar '\n' .
     appEndo (foldMap
       (\(bytecodeIdx, (astidx, instr)) -> Endo (
         let
