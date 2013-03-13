@@ -139,8 +139,9 @@ showProgramBytecode = flip showsProgramBytecode ""
 -}
 
 
-showsStackFrame :: CompiledProgram -> LispyStackFrame -> ShowS
-showsStackFrame program (LispyStackFrame instructionPointer computedValues) =
+showsStackFrame :: LispyState -> LispyStackFrame -> ShowS
+showsStackFrame state (LispyStackFrame instructionPointer computedValues) =
+  let program = lsCompiledProgram state in
   showString "Instruction pointer: " .
   shows instructionPointer .
   let (astidx, code) = (programBytecode program) Vector.! instructionPointer in
@@ -150,24 +151,26 @@ showsStackFrame program (LispyStackFrame instructionPointer computedValues) =
   showsBytecodeInstruction (programASTsByIdx program) instructionPointer code .
   appEndo (foldMap (\(idx, val) -> Endo (
     showString "\n\t" .
-    showsVarIdx (programASTsByIdx program) idx . showString " = " . shows val
+    showsVarIdx (programASTsByIdx program) idx .
+    showString " = " .
+    showsRuntimeValue state val
     )) (Map.toList computedValues)) .
   showChar '\n'
 
-showsStack :: CompiledProgram -> LispyStack -> ShowS
-showsStack program (LispyStack frame parent) =
-  showsStackFrame program frame .
+showsStack :: LispyState -> LispyStack -> ShowS
+showsStack state (LispyStack frame parent) =
+  let program = lsCompiledProgram state in
+  showsStackFrame state frame .
   case parent of
     Just (retValDest, nextStack) ->
       showString "  will return value to " .
       showsVarIdx (programASTsByIdx program) retValDest .
       showChar '\n' .
-      showsStack program nextStack
+      showsStack state nextStack
     Nothing -> id
 
 showsStateStack :: LispyState -> ShowS
-showsStateStack (LispyState program stack _ _) =
-  showsStack program stack
+showsStateStack state@(LispyState _ stack _ _) = showsStack state stack
 
 showStateStack :: LispyState -> String
 showStateStack ls = showsStateStack ls ""
@@ -196,14 +199,21 @@ showsRuntimeValue _ (BuiltinFunctionValue bf) =
   showString (Text.unpack (builtinDataToText Map.! bf))
 showsRuntimeValue state (FunctionValue frame _) =
   showChar '<' .
-  showsStackFrame (lsCompiledProgram state) frame .
+  showsStackFrame state frame .
   showChar '>'
 showsRuntimeValue state (PendingValue pv) =
   case Map.lookup pv (lsPendingValues state) of
     Nothing -> showString "<pending " . shows pv . showChar '>'
-    Just v -> showsRuntimeValue state v .
-              showString " via pending " .
-              shows pv
+    Just v -> let
+        -- avoid emitting infinite text for loops
+        sanitizedState = state{lsPendingValues =
+          Map.delete pv (lsPendingValues state) }
+      in
+      showString "<via pending " .
+      shows pv .
+      showString ": " .
+      showsRuntimeValue sanitizedState v .
+      showChar '>'
 
 showRuntimeValue :: LispyState -> RuntimeValue -> String
 showRuntimeValue p v = showsRuntimeValue p v ""
