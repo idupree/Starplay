@@ -371,9 +371,8 @@ parseList = do
   return (ASTList idx (Vector.fromList asts))
 
 parseSexp :: LispyParser (Located AST)
-parseSexp = do
-  parseWhitespaceAndComments
-  parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression"
+parseSexp = P.between parseWhitespaceAndComments parseWhitespaceAndComments
+  (parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression")
 
 parseWithLocation :: LispyParser a -> LispyParser (Located a)
 parseWithLocation parser = do
@@ -401,7 +400,6 @@ doParse :: LispyParser a -> P.SourceName -> Text -> Either P.ParseError a
 doParse parser sourceName text = let
     fullParser = do
       result <- parser
-      parseWhitespaceAndComments
       P.eof
       return result
   in
