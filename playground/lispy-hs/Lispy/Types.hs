@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor, OverloadedStrings #-}
 
 module Lispy.Types (module Lispy.Types, module Text.Parsec) where
 

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
 
 module Lispy.Interpret (startProgram, singleStep) where
 

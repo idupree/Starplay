@@ -1,8 +1,3 @@
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
-
-
--- "Compile" means CompileToBytecode
 
 module Lispy (main) where
 

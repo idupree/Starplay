@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE ViewPatterns, OverloadedStrings #-}
 
 module Lispy.CompileToBytecode where
 

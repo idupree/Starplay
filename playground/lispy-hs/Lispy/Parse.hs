@@ -1,5 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 -- | This module parses S-expressions.  Just about the only semantic
 -- interpretation it does is turning literal numbers into numeric
