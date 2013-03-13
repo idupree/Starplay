@@ -129,8 +129,11 @@ data CompiledProgram = CompiledProgram
   , programASTsByIdx :: !(Vector (Located AST))
   }
 --instance Show CompiledProgram where
+showsProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> (String -> String)
+showsProgramBytecode = appEndo . foldMap
+  (\(_, instr) -> Endo (shows instr . showChar '\n'))
 showProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> String
-showProgramBytecode = foldMap (\(_, instr) -> show instr)
+showProgramBytecode = flip showsProgramBytecode ""
   
 
 -- how does let or arg-binding work
