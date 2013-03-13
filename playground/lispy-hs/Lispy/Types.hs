@@ -1,31 +1,20 @@
 {-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
   ViewPatterns, OverloadedStrings, FlexibleInstances #-}
 
-module Lispy.Types where
+module Lispy.Types (module Lispy.Types, module Text.Parsec) where
 
---import Control.Exception
---import System.Timeout
-import System.Environment
-
-import qualified Data.Char as Char
 import Data.Text as Text
-import qualified Data.Text.IO
---import Data.Ratio
-import Data.List as List
+--import Data.List as List
 import Data.Vector as Vector
 import Data.Map.Strict as Map
 import Data.Set as Set
-import Data.Foldable as Foldable
-import Data.Monoid
-import Data.Sequence as Seq
+--import Data.Foldable as Foldable
+--import Data.Monoid as Monoid
+--import Data.Sequence as Seq
 --import Data.Maybe
---import Data.Generics.Uniplate.Data
---import Data.Data
---import Data.Attoparsec.Text as P
-import qualified Text.Parsec as P
---import Text.Parsec.Text () --for the instance
-import Control.Applicative
---import MonadLib as M
+--import Control.Applicative
+
+import Text.Parsec (SourcePos, sourceLine, sourceColumn)
 
 
 -- |
@@ -55,7 +44,7 @@ type LispyNum = Int
 type ASTIdx = Int
 data SourceLocInfo = SourceLocInfo
   { sourceText :: !Text
-  , sourceBegin, sourceEnd :: !P.SourcePos
+  , sourceBegin, sourceEnd :: !Text.Parsec.SourcePos
   }
   deriving (Eq, Ord, Show)
 data Located a = L { sourceLocInfo :: !SourceLocInfo, unL :: !a }

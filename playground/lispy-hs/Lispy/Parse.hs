@@ -3,29 +3,21 @@
 
 module Lispy.Parse (parseSexp, parseLispyProgram, doParse) where
 
---import Control.Exception
---import System.Timeout
-import System.Environment
-
 import qualified Data.Char as Char
 import Data.Text as Text
-import qualified Data.Text.IO
---import Data.Ratio
 import Data.List as List
 import Data.Vector as Vector
-import Data.Map.Strict as Map
+--import Data.Map.Strict as Map
 import Data.Set as Set
-import Data.Foldable as Foldable
-import Data.Monoid
-import Data.Sequence as Seq
+--import Data.Foldable as Foldable
+--import Data.Monoid as Monoid
+--import Data.Sequence as Seq
 --import Data.Maybe
---import Data.Generics.Uniplate.Data
---import Data.Data
+import Control.Applicative
+
 --import Data.Attoparsec.Text as P
 import qualified Text.Parsec as P
---import Text.Parsec.Text () --for the instance
-import Control.Applicative
---import MonadLib as M
+
 
 
 
