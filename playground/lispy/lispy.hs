@@ -56,7 +56,8 @@ main = do
     --"(lambda (x y z) (x y (x z)))"
   let compiled = case parsed of Right ast -> compile ast
   print parsed
-  putStr (showProgramBytecode (programBytecode compiled))
+  print compiled
+  --putStr (showProgramBytecode (programBytecode compiled))
 
 
 -- |
@@ -135,13 +136,105 @@ data CompiledProgram = CompiledProgram
   , programAST :: !(Located AST)
   , programASTsByIdx :: !(Vector (Located AST))
   }
---instance Show CompiledProgram where
-showsProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> (String -> String)
+instance Show CompiledProgram where
+  showsPrec _ (CompiledProgram bytecode (L progSource _) astsByIdx) =
+    shows (sourceText progSource) . showChar '\n' .
+    appEndo (foldMap
+      (\(bytecodeIdx, (astidx, instr)) -> Endo (
+        let
+          motherInstructionDesc = showsVarIdx astsByIdx astidx
+          bytecodeIdxDesc = shows bytecodeIdx
+        in
+        showString (List.replicate
+          (max 0 (3 - List.length (bytecodeIdxDesc ""))) ' ') .
+        shows bytecodeIdx .
+        showString "  " .
+        motherInstructionDesc .
+        showString (List.replicate
+          (max 1 (22 - List.length (motherInstructionDesc ""))) ' ') .
+        showsBytecodeInstruction astsByIdx bytecodeIdx instr . showChar '\n'
+      ))
+      (Vector.indexed bytecode))
+
+showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
+showsVarIdx astsByIdx idx =
+  shows idx .
+  showChar '(' . 
+  ( if idx < 0
+    then showString "arg " . shows (-idx)
+    else case astsByIdx Vector.! idx of
+      L source ast ->showsASTConciseSummary ast .
+        showChar ':' . shows (P.sourceLine (sourceBegin source)) .
+        showChar ':' . shows (P.sourceColumn (sourceBegin source))
+  ) .
+  showChar ')'
+
+showsASTConciseSummary :: AST -> ShowS
+showsASTConciseSummary ast = case ast of
+  ASTNumber _ num -> shows num
+  ASTIdentifier _ ident -> showString (Text.unpack ident)
+  ASTList _ members -> case Vector.headM members of
+    Just (L _ ast') -> showChar '(' . showsASTConciseSummary ast' .
+      if Vector.length members > 1 then showString "…)" else showChar ')'
+    Nothing -> showString "()"
+
+showsBytecodeInstruction :: Vector (Located AST) -> Int -> BytecodeInstruction -> ShowS
+showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
+    var = showsVarIdx astsByIdx
+    relDest dest = showChar '+' . shows dest . showChar '(' .
+      shows (bytecodeIdx + 1 + dest) . showChar ')'
+  in case bytecode of
+  CALL result func args ->
+    showString "CALL " .
+    var result .
+    showString " = " . var func .
+    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
+  TAILCALL func args ->
+    showString "TAILCALL " .
+    var func .
+    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
+  LITERAL result value ->
+    showString "LITERAL " .
+    var result .
+    showString " = " .
+    shows value
+  NAME result origName ->
+    showString "NAME " .
+    var result .
+    showString " = " .
+    var origName
+  RETURN origName ->
+    showString "RETURN " .
+    var origName
+  MAKE_CLOSURE result vars dest ->
+    showString "MAKE_CLOSURE " .
+    var result .
+    showString " =" .
+    ( if Set.null vars
+      then id
+      else
+      showString " [" .
+      List.foldr1
+        (\s rest -> s . showChar ' ' . rest)
+        (fmap shows (Set.toList vars)) .
+      showChar ']'
+    ) .
+    showChar ' ' .
+    relDest dest
+  GOTO dest ->
+    showString "GOTO " . relDest dest
+  GOTO_IF_NOT dest cond ->
+    showString "GOTO_IF_NOT " . relDest dest .
+    showChar ' ' .
+    var cond
+
+{-
+showsProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> ShowS
 showsProgramBytecode = appEndo . foldMap
   (\(_, instr) -> Endo (shows instr . showChar '\n'))
 showProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> String
 showProgramBytecode = flip showsProgramBytecode ""
-  
+-}
 
 -- how does let or arg-binding work
 -- current stack frame astidx indexed
