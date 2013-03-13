@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
-  ViewPatterns, LambdaCase, OverloadedStrings #-}
+  ViewPatterns, OverloadedStrings, FlexibleInstances #-}
 
 -- TODO LambdaCase is 7.6+
 
@@ -10,15 +10,20 @@ import Control.Exception
 import System.Timeout
 
 import qualified Data.Char as Char
---import Data.Text as Text
+import Data.Text as Text
 import Data.Ratio
 import Data.List as List
 import Data.Vector as Vector
 import Data.Map.Strict as Map
 import Data.Set as Set
-import Data.Generics.Uniplate.Data
-import Data.Data
-import Data.Attoparsec.Text as P
+import Data.Foldable as Foldable
+import Data.Monoid
+import Data.Sequence as Seq
+--import Data.Generics.Uniplate.Data
+--import Data.Data
+--import Data.Attoparsec.Text as P
+import qualified Text.Parsec as P
+--import Text.Parsec.Text () --for the instance
 import Control.Applicative
 import MonadLib as M
 
@@ -33,8 +38,11 @@ testEval expr result = do
 -}
 -- better to work on the stack machine.
 
+--main :: IO ()
+--main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
+
 main :: IO ()
-main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
+main = print (doParseLispyProgram "test str" "abc (d  e 34) (())")
 
 
 -- |
@@ -45,54 +53,103 @@ main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 -- "GOTO 0" is equivalent to a NOP.  For MAKE_CLOSURE, it points to
 -- the first instruction of the created function.
 data BytecodeInstruction
-  = CALL { bcResultName :: VarIdx, bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
+  = CALL { bcResultName :: VarIdx,
+               bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
   | TAILCALL { bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
   | LITERAL { bcResultName :: VarIdx, bcLiteralValue :: AtomicValue }
   | NAME { bcResultName :: VarIdx, bcOriginalName :: VarIdx }
   | RETURN { bcOriginalName :: VarIdx }
-  | MAKE_CLOSURE { bcResultName :: VarIdx, bcVarsInClosure :: Set VarIdx, bcRelativeDestination :: Int }
+  | MAKE_CLOSURE { bcResultName :: VarIdx, bcVarsInClosure :: Set VarIdx,
+                   bcRelativeDestination :: Int }
   | GOTO { bcRelativeDestination :: Int }
   | GOTO_IF_NOT { bcRelativeDestination :: Int, bcConditionName :: VarIdx }
   --UNTIL
   deriving (Eq, Ord, Show)
+type VarIdx = ASTIdx
+type AtomicValue = LispyNum
 
-data CompiledProgram = CompiledProgram
-  { progBytecodes :: Vector (BytecodeInstruction, SituatedAST))
--- whoops when it is programmatic, just making numeric targets
--- makes more sense
---  , progLabels :: Map BytecodeIdx
--- Ah goto:s can be relative to the GOTO instruction to make code relocatable
-  , program :: SituatedAST
-  }
 
 -- | TODO: excludes negative scoped vars used (non-closure parameter uses)
 scopedVarsUsed :: (Foldable f) => f BytecodeInstruction -> Set VarIdx
 scopedVarsUsed = foldMap (\instr -> case instr of
-    CALL _ func args = mappend (Set.singleton func) (foldMap Set.singleton args)
-    TAILCALL func args = mappend (Set.singleton func) (foldMap Set.singleton args)
-    LITERAL _ = mempty
-    NAME _ originalName = Set.singleton originalName
-    RETURN originalName = Set.singleton originalName
-    MAKE_CLOSURE _ vars _ = vars
-    GOTO _ = mempty
-    GOTO_IF_NOT _ condition = Set.singleton condition
+    CALL _ func args      -> mappend (Set.singleton func)
+                                     (foldMap Set.singleton args)
+    TAILCALL func args    -> mappend (Set.singleton func)
+                                     (foldMap Set.singleton args)
+    LITERAL _ _           -> mempty
+    NAME _ originalName   -> Set.singleton originalName
+    RETURN originalName   -> Set.singleton originalName
+    MAKE_CLOSURE _ vars _ -> vars
+    GOTO _                -> mempty
+    GOTO_IF_NOT _ cond    -> Set.singleton cond
   )
 
-data CompiledProgram = CompiledProgram {
-  programBytecode :: Vector (ASTIdx, BytecodeInstruction),
-  programAST :: AST
+type ASTIdx = Int
+data SourceLocInfo = SourceLocInfo
+  { sourceText :: !Text
+  , sourceBegin, sourceEnd :: !P.SourcePos
+  }
+  deriving (Eq, Ord, Show)
+data Located a = L { sourceLocInfo :: !SourceLocInfo, unL :: !a }
+  deriving (Eq, Ord, Functor)
+data AST
+  = ASTNumber { astIdx :: !ASTIdx, astNumber :: !LispyNum }
+  | ASTIdentifier { astIdx :: !ASTIdx, astIdentifier :: !Text }
+  | ASTList { astIdx :: !ASTIdx, astList :: !(Vector (Located AST)) }
+lASTIdx :: Located AST -> ASTIdx
+lASTIdx (L _ ast) = astIdx ast
+
+instance (Show a) => Show (Located a) where
+  showsPrec prec (L _ val) = showsPrec prec val
+  
+instance Show AST where
+  showsPrec _ (ASTNumber _ num) = shows num
+  showsPrec _ (ASTIdentifier _ ident) = showString (Text.unpack ident)
+  showsPrec _ (ASTList _ members) =
+    if Vector.null members
+    then showString "()"
+    else
+    showChar '(' .
+    Vector.foldr1
+      (\s rest -> s . showChar ' ' . rest)
+      (fmap (shows . unL) members) .
+    showChar ')'
+
+
+data CompiledProgram = CompiledProgram
+  { programBytecode :: !(Vector (ASTIdx, BytecodeInstruction))
+  , programAST :: !(Located AST)
+  , programASTsByIdx :: !(Vector (Located AST))
   }
 
 -- how does let or arg-binding work
 -- current stack frame astidx indexed
 -- 'call' can do special stuff
 
-compile :: SituatedAST -> CompiledProgram
-compile ast = Vector.fromList . Seq.toList . compile'
-  (CompileScope Map.empty True)
+indexAST :: Located AST -> Vector (Located AST)
+indexAST astToIndex = let
+  makeASTIdxMap :: Located AST -> Map ASTIdx (Located AST)
+  makeASTIdxMap lAST@(L _ (ASTList idx children)) =
+    Map.insert idx lAST (foldMap makeASTIdxMap children)
+  makeASTIdxMap lAST@(L _ ast) =
+    Map.singleton (astIdx ast) lAST
+  astIdxMap = makeASTIdxMap astToIndex
+  in Vector.generate (Map.size astIdxMap) (astIdxMap Map.!)
+
+-- This implementation could be faster because Seq has O(1) length.
+seqToVector :: Seq a -> Vector a
+seqToVector s = Vector.fromList (Foldable.toList s)
+
+compile :: Located AST -> CompiledProgram
+compile ast = let
+  instrs = compile' (CompileScope Map.empty True) ast
+  in CompiledProgram
+    (seqToVector instrs)
+    ast
+    (indexAST ast)
 
 data CompileScope = CompileScope
-  { compileScopeEnv :: Map String ASTIdx
+  { compileScopeEnv :: Map Text VarIdx
   -- | when compileScopeIsTailPosition, the returned code
   -- is expected to return or tailcall, never to let the
   -- end of the returned code-block be reached.
@@ -101,96 +158,230 @@ data CompileScope = CompileScope
 
 -- We use 'Seq' (Data.Sequence) because it has O(1) cons and snoc
 -- and length, and O(log n) concatenation.
-compile' :: CompileScope -> SituatedAST -> Seq (ASTIdx, BytecodeInstruction)
-compile' scope ast = let
+compile' :: CompileScope -> Located AST -> Seq (ASTIdx, BytecodeInstruction)
+compile' scope (L _ ast) = let
   instr i = Seq.singleton (astIdx ast, i)
   in 
   case ast of
-  ASTAtomicVal v -> mconcat [
+  ASTNumber _ v -> mconcat [
     instr (LITERAL (astIdx ast) v),
     if compileScopeIsTailPosition scope
     then instr (RETURN (astIdx ast))
     else mempty
     ]
-  ASTApply list -> case head list of
-    --[] -> LITERAL
-    "if" -> case args of
-      --[cond, then_] ->
-      [cond, then_, else_] -> let
-        condCode = compile' scope{compileScopeIsTailPosition=False} cond
-        thenCode = compile' scope then_
-        elseCode = compile' scope else_
-        elseCode2 = if compileScopeIsTailPosition scope
-          then elseCode
-          else mconcat [
-            elseCode,
-            instr (NAME (astIdx ast) (astIdx else_))
+  ASTIdentifier _ v ->
+    case Map.lookup v (compileScopeEnv scope) of
+      -- TODO show src loc in error too
+      Nothing -> error ("undeclared identifier " List.++ Text.unpack v)
+      Just varIdx ->
+        if compileScopeIsTailPosition scope
+        then instr (RETURN varIdx)
+        else instr (NAME (astIdx ast) varIdx)
+  ASTList _ list -> case Vector.toList list of
+    (func : args) -> case unL func of
+      ASTIdentifier _ "if" -> case args of
+        --[cond, then_] ->
+        [cond, then_, else_] -> let
+          condCode = compile' scope{compileScopeIsTailPosition=False} cond
+          thenCode = compile' scope then_
+          elseCode = compile' scope else_
+          elseCode2 = if compileScopeIsTailPosition scope
+            then elseCode
+            else mconcat [
+              elseCode,
+              instr (NAME (astIdx ast) (lASTIdx else_))
+              ]
+          thenCode2 = if compileScopeIsTailPosition scope
+            then thenCode
+            else mconcat [
+              thenCode,
+              instr (NAME (astIdx ast) (lASTIdx then_)),
+              instr (GOTO (Seq.length elseCode))
+              ]
+          in mconcat [
+            condCode,
+            instr (GOTO_IF_NOT (Seq.length thenCode2) (lASTIdx cond)),
+            thenCode2,
+            elseCode
             ]
-        thenCode2 = if compileScopeIsTailPosition scope
-          then thenCode
-          else mconcat [
-            thenCode,
-            instr (NAME (astIdx ast) (astIdx then_)),
-            instr (GOTO (length elseCode))
+      ASTIdentifier _ "letrec" -> case args of
+        [L _ (ASTList _ bindings), result] -> let
+          parseBinding :: Located AST -> (Text, Located AST)
+          parseBinding (L _ (ASTList _
+            (Vector.toList -> [L _ (ASTIdentifier _ varname), expr])))
+            = (varname, expr)
+          parsedBindings = fmap parseBinding bindings
+          bindingEnv = Map.fromList (Vector.toList (
+            (fmap (\ (varname, expr) -> (varname, lASTIdx expr)) parsedBindings)))
+          resultScope = scope { compileScopeEnv =
+            (Map.union bindingEnv (compileScopeEnv scope)) }
+          bindingsCode = foldMap (compile' resultScope . snd) parsedBindings
+          resultCode = compile' resultScope result
+          in mconcat [
+            bindingsCode,
+            resultCode,
+            if compileScopeIsTailPosition scope
+            then mempty
+            else instr (NAME (astIdx ast) (lASTIdx result))
             ]
-        in mconcat [
-          condCode,
-          Seq.singleton (GOTO_IF_NOT (length thenCode2) (astIdx cond)),
-          thenCode2,
-          elseCode
-          ]
-    "letrec" -> case args of
-      [bindings, result] -> let
-        bindingEnv = Map.fromList
-          (map (\ (varname, expr) -> (varname, astIdx expr)) bindings)
-        resultScope = scope { compileScopeEnv =
-          (Map.unions bindingEnv (compileScopeEnv scope)) }
-        bindingsCode = map (compile' resultScope . snd) bindings
-        resultCode = compile' resultScope result
-        in mconcat [
-          bindingsCode,
-          resultCode,
+      ASTIdentifier _ "lambda" -> case args of
+        [L _ (ASTList _ params), body] -> let
+          bindingEnv = Map.fromList (Vector.toList (
+            fmap (\ (paramNum, L _ (ASTIdentifier _ varname))
+                      -> (varname, -paramNum - 1))
+            (Vector.indexed params)))
+          bodyScope = scope {
+            compileScopeEnv = (Map.union bindingEnv (compileScopeEnv scope)),
+            compileScopeIsTailPosition = True
+            }
+          bodyCode = compile' bodyScope body
+          bodyClosureUses = Set.intersection
+            (Set.fromList (Map.elems (compileScopeEnv scope)))
+            (scopedVarsUsed (fmap snd bodyCode))
+          in mconcat [
+            instr (MAKE_CLOSURE (astIdx ast) bodyClosureUses 1),
+            instr (GOTO (Seq.length bodyCode)),
+            bodyCode
+            ]
+      ASTIdentifier _ "do" -> case List.reverse args of
+        (last : (List.reverse -> init)) -> mconcat [
+          foldMap (compile' scope{compileScopeIsTailPosition=False}) init,
+          compile' scope last,
           if compileScopeIsTailPosition scope
           then mempty
-          else instr (NAME (astIdx ast) (astIdx result))
+          else instr (NAME (astIdx ast) (lASTIdx last))
           ]
-    "lambda" -> case args of
-      [params, body] -> let
-        bindingEnv = Map.fromList
-          (zipWith (\paramNum varname -> (varname, -paramNum)) [1..] params)
-        bodyScope = scope {
-          compileScopeEnv = (Map.unions bindingEnv (compileScopeEnv scope)),
-          compileScopeIsTailPosition = True
-          }
-        bodyCode = compile' bodyScope result
-        bodyClosureUses = Set.intersection (compileScopeEnv scope)
-                                          (scopedVarsUsed bodyCode)
+      _ -> let
+        funcCode = compile' scope{compileScopeIsTailPosition=False} func
+        argsCode = foldMap (compile' scope{compileScopeIsTailPosition=False}) args
+        call = if compileScopeIsTailPosition scope
+          then TAILCALL
+          else CALL (astIdx ast)
         in mconcat [
-          instr (MAKE_CLOSURE bodyClosureUses 1),
-          instr (GOTO (length resultCode)),
-          bodyCode
+          funcCode,
+          argsCode,
+          instr (call (lASTIdx func) (Vector.fromList (fmap lASTIdx args)))
           ]
-    "do" -> case reverse args of
-      (last : (reverse -> init)) -> mconcat [
-        foldMap (compile' scope{compileScopeIsTailPosition=False}) init,
-        compile' scope last,
-        if compileScopeIsTailPosition scope
-        then mempty
-        else instr (NAME (astIdx ast) (astIdx last))
-        ]
-    func -> let
-      funcCode = compile' scope{compileScopeIsTailPosition=False} func
-      argsCode = map (compile' scope{compileScopeIsTailPosition=False}) args
-      call = if compileScopeIsTailPosition scope
-        then TAILCALL
-        else CALL (astIdx ast)
-      in mconcat [
-        funcCode,
-        argsCode,
-        instr (call (astIdx func) (map astIdx args))
-        ]
 
 
+-- TODO using ByteString instead of Text would improve the asymptotic
+-- complexity (Text doesn't have O(1) length or slicing)
+-- but then we need to parse UTF-8 chars with parsec.
+data LocText = LocText {-#UNPACK#-}!Int !Text
+instance (Monad m) => P.Stream LocText m Char where
+  uncons (LocText loc text) = return (fmap (fmap (LocText (loc+1))) (Text.uncons text))
+  {-# INLINE uncons #-}
+
+type LispyNum = Int
+type LispyParser = P.Parsec LocText ASTIdx
+
+
+
+schemeIdentifierChar :: LispyParser Char
+schemeIdentifierChar = P.satisfy (\c ->
+    {-Attoparsec has inClass-}
+    Set.member c (Set.fromList "-!$%&*+.\\/:<=>?@^_~")
+    || Char.isAlphaNum c
+  )
+
+parseNaturalNumber :: LispyParser Int
+parseNaturalNumber = go 0
+  where
+    go n = do
+      d <- P.digit
+      let n' = n * 10 + (Char.digitToInt d)
+      P.option n' (go n')
+
+parseNumber :: LispyParser LispyNum
+parseNumber =
+  fmap negate (P.char '-' >> parseNaturalNumber)
+  <|> parseNaturalNumber
+
+parserNextASTIdx :: LispyParser ASTIdx
+parserNextASTIdx = do
+  idx <- P.getState
+  P.putState (idx + 1)
+  return idx
+
+parseAtom :: LispyParser AST
+parseAtom =
+  P.choice (List.map P.try
+  [ do
+      num <- parseNumber P.<?> "number"
+      idx <- parserNextASTIdx
+      return (ASTNumber idx num)
+  , do
+      ident <- (P.many1 schemeIdentifierChar) P.<?> "identifier"
+      idx <- parserNextASTIdx
+      return (ASTIdentifier idx (Text.pack ident))
+  ])
+{-
+  [ fmap (\rat -> Number (LispyNum rat True)) rational
+  , fmap (\str -> Ident str) $ many1 schemeIdentifierChar
+  , fmap (const Void) $ string "#void"
+  , fmap (const (Boolean True)) $ string "#true"
+  , fmap (const (Boolean False)) $ string "#false"
+  , fmap (const UnboundVariable) $ string "#unbound-variable"
+  -- warn/fail if it's not a known builtin function?
+  , fmap (\str -> BuiltinFunction str) $ P.char '#' >> many1 schemeIdentifierChar
+  ]-}
+
+parseList :: LispyParser AST
+parseList = do
+  _ <- P.char '('
+  idx <- parserNextASTIdx
+  asts <- P.many parseSexp
+  _ <- P.char ')'
+  return (ASTList idx (Vector.fromList asts))
+
+parseSexp :: LispyParser (Located AST)
+parseSexp = parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression"
+
+parseWithLocation :: LispyParser a -> LispyParser (Located a)
+parseWithLocation parser = do
+  P.skipMany P.space
+  beginLoc <- P.getPosition
+  LocText beginCharIdx beginText <- P.getInput
+  
+  parsed <- parser
+  
+  endLoc <- P.getPosition
+  LocText endCharIdx _ <- P.getInput
+  let sourceLocInfo = SourceLocInfo
+        (Text.take (endCharIdx - beginCharIdx) beginText)
+        beginLoc
+        endLoc
+  
+  P.skipMany P.space
+  return (L sourceLocInfo parsed)
+
+parseLispyProgram :: LispyParser (Located AST)
+parseLispyProgram = do
+  idx <- parserNextASTIdx
+  fmap (fmap (ASTList idx . Vector.fromList))
+    (parseWithLocation (P.many parseSexp))
+
+doParseLispyProgram :: P.SourceName -> Text -> Either P.ParseError (Located AST)
+doParseLispyProgram sourceName text =
+  P.runParser parseLispyProgram 0 sourceName (LocText 0 text)
+
+
+{-
+
+
+
+
+
+data LispyNum = LispyNum { numVal :: Rational, numIsExact :: Bool }
+  deriving (Eq, Ord, Typeable, Data)
+instance Num LispyNum where
+  LispyNum v1 e1 + LispyNum v2 e2 = LispyNum (v1 + v2) (e1 && e2)
+  LispyNum v1 e1 - LispyNum v2 e2 = LispyNum (v1 - v2) (e1 && e2)
+  LispyNum v1 e1 * LispyNum v2 e2 = LispyNum (v1 * v2) (e1 && e2)
+  negate (LispyNum v1 e1) = LispyNum (negate v1) (e1)
+  abs (LispyNum v1 e1) = LispyNum (abs v1) (e1)
+  signum (LispyNum v1 e1) = LispyNum (signum v1) (e1)
+  fromInteger i = LispyNum (fromInteger i) True
 
 
 
@@ -247,17 +438,6 @@ data BuiltinFunction = Plus | Minus | Times | Negate
 data BuiltinSpecialForm = Lambda | If | Let | Loop | While | For
   | Goto | Label | Tailcall | Return | Do | Set
 
-
-data LispyNum = LispyNum { numVal :: Rational, numIsExact :: Bool }
-  deriving (Eq, Ord, Typeable, Data)
-instance Num LispyNum where
-  LispyNum v1 e1 + LispyNum v2 e2 = LispyNum (v1 + v2) (e1 && e2)
-  LispyNum v1 e1 - LispyNum v2 e2 = LispyNum (v1 - v2) (e1 && e2)
-  LispyNum v1 e1 * LispyNum v2 e2 = LispyNum (v1 * v2) (e1 && e2)
-  negate (LispyNum v1 e1) = LispyNum (negate v1) (e1)
-  abs (LispyNum v1 e1) = LispyNum (abs v1) (e1)
-  signum (LispyNum v1 e1) = LispyNum (signum v1) (e1)
-  fromInteger i = LispyNum (fromInteger i) True
 
 data Atom
     = Void
@@ -1145,3 +1325,4 @@ data FunctionEvaluation = FunctionEvaluation
   
   -- laziness is a boundary like fn is. fn, if.
 -}
+---}
