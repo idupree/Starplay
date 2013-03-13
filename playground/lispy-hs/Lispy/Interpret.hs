@@ -16,22 +16,26 @@ import Lispy.Types
 
 ------------------- INTERPRETING -------------------
 
+
 -- "pure" as in "no side effects"
-pureBuiltinFunction :: BuiltinFunction -> [RuntimeValue] -> RuntimeValue
+pureBuiltinFunction :: Builtin -> [RuntimeValue] -> RuntimeValue
 pureBuiltinFunction Plus [AtomValue a, AtomValue b] = AtomValue (a + b)
 pureBuiltinFunction Minus [AtomValue a, AtomValue b] = AtomValue (a - b)
 pureBuiltinFunction Times [AtomValue a, AtomValue b] = AtomValue (a * b)
 pureBuiltinFunction Negate [AtomValue a] = AtomValue (negate a)
-pureBuiltinFunction LessThan [AtomValue a, AtomValue b] = AtomValue (toIntBool (a < b))
-pureBuiltinFunction LessEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a <= b))
-pureBuiltinFunction GreaterThan [AtomValue a, AtomValue b] = AtomValue (toIntBool (a > b))
-pureBuiltinFunction GreaterEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a >= b))
-pureBuiltinFunction Equal [AtomValue a, AtomValue b] = AtomValue (toIntBool (a == b))
-pureBuiltinFunction NotEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a /= b))
-pureBuiltinFunction And [AtomValue a, AtomValue b] = AtomValue (toIntBool (fromIntBool a && fromIntBool b))
-pureBuiltinFunction Or [AtomValue a, AtomValue b] = AtomValue (toIntBool (fromIntBool a || fromIntBool b))
-pureBuiltinFunction Not [AtomValue a] = AtomValue (toIntBool (not (fromIntBool a)))
-pureBuiltinFunction _ _ = error "wrong number of arguments to builtin function"
+pureBuiltinFunction LessThan [a, b] = truthValue (a < b)
+pureBuiltinFunction LessEqual [a, b] = truthValue (a <= b)
+pureBuiltinFunction GreaterThan [a, b] = truthValue (a > b)
+pureBuiltinFunction GreaterEqual [a, b] = truthValue (a >= b)
+pureBuiltinFunction Equal [a, b] = truthValue (a == b)
+pureBuiltinFunction NotEqual [a, b] = truthValue (a /= b)
+-- We use the Lua convention of returning the first truthy value
+-- that makes the and/or operator have the correct truthiness.
+pureBuiltinFunction And [a, b] = if isTruthy a then b else a
+pureBuiltinFunction Or [a, b] = if isTruthy a then a else b
+pureBuiltinFunction Not [a] = truthValue (not (isTruthy a))
+pureBuiltinFunction _ _ =
+  error "wrong number of arguments to builtin function (or bug non-function builtin)"
 
 startProgram :: CompiledProgram -> LispyState
 startProgram program = LispyState
@@ -86,8 +90,7 @@ singleStep state@(LispyState
               }
     GOTO dest -> goto (instructionPointer+1+dest) state
     GOTO_IF_NOT dest cond ->
-      --TODO bool type rather than "zero is false"
-      if (computedValues Map.! cond) == AtomValue 0
+      if not (isTruthy (computedValues Map.! cond))
       then goto (instructionPointer+1+dest) state
       else goto (instructionPointer+1) state
 
@@ -120,7 +123,7 @@ call resultElseTail func args state = let
       callBuiltinFunction resultElseTail bf args state
     _ -> error "runtime error: calling a non-function"
 
-callBuiltinFunction :: Maybe VarIdx -> BuiltinFunction -> Vector VarIdx -> LispyState -> LispyState
+callBuiltinFunction :: Maybe VarIdx -> Builtin -> Vector VarIdx -> LispyState -> LispyState
 callBuiltinFunction resultElseTail bf args state = case bf of
   _ -> let
     computedValues = (lsfComputedValues (lsFrame (lsStack state)))

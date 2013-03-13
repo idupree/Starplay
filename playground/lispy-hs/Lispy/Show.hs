@@ -58,7 +58,7 @@ showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
 showsVarIdx astsByIdx idx =
   shows idx .
   showChar '(' .
-  ( case Map.lookup idx builtinFunctionVarIdxToText of
+  ( case Map.lookup idx builtinVarIdxToText of
       Just builtinName ->
         showString "builtin " .
         showString (Text.unpack builtinName)

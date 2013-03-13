@@ -76,21 +76,22 @@ data CompileScope = CompileScope
 -- Every builtin function must have worst-case running time
 -- that is very short.  Constant or log(n) time are generally
 -- acceptable.
-data BuiltinFunction = Plus | Minus | Times | Negate
+data Builtin = Plus | Minus | Times | Negate
   | LessThan | LessEqual | GreaterThan | GreaterEqual
   | Equal | NotEqual | And | Or | Not
+  -- Currently, Nil is false and every other value is true.
+  -- Currently, even builtins like "nil" that should be builtin
+  -- constants are functions instead
+  | Nil | Truth
   deriving (Eq, Ord, Bounded, Enum, Show, Read)
 
 -- TODO something less arbitrary than just giving each builtin
 -- a high index that probably won't conflict with things.
-builtinFunctionVarIdxs :: [(VarIdx, BuiltinFunction)]
-builtinFunctionVarIdxs = fmap (\bf -> (negate (fromEnum bf + 40000000), bf))
+builtinVarIdxs :: [(VarIdx, Builtin)]
+builtinVarIdxs = fmap (\bf -> (negate (fromEnum bf + 40000000), bf))
                                       [minBound..maxBound]
-builtinsComputedValues :: StackFrameComputedValues
-builtinsComputedValues = fmap BuiltinFunctionValue
-                              (Map.fromList builtinFunctionVarIdxs)
-builtinFunctionNames :: [(Text, BuiltinFunction)]
-builtinFunctionNames =
+builtinNames :: [(Text, Builtin)]
+builtinNames =
   [("+", Plus)
   ,("-", Minus)
   ,("*", Times)
@@ -104,39 +105,45 @@ builtinFunctionNames =
   ,("and", And)
   ,("or", Or)
   ,("not", Not)
+  ,("nil", Nil)
+  ,("true", Truth)
   ]
-builtinFunctionVarIdxToData :: Map VarIdx BuiltinFunction
-builtinFunctionVarIdxToData = Map.fromList builtinFunctionVarIdxs
-builtinFunctionDataToVarIdx :: Map BuiltinFunction VarIdx
-builtinFunctionDataToVarIdx = Map.fromList
-                      (fmap (\(x,y)->(y,x)) builtinFunctionVarIdxs)
-builtinFunctionTextToVarIdx :: Map Text VarIdx
-builtinFunctionTextToVarIdx = fmap (builtinFunctionDataToVarIdx Map.!)
-                                (Map.fromList builtinFunctionNames)
-builtinFunctionVarIdxToText :: Map VarIdx Text
-builtinFunctionVarIdxToText =
-  Map.fromList (fmap (\(x,y)->(y,x))
-    (Map.toList builtinFunctionTextToVarIdx))
+builtinVarIdxToData :: Map VarIdx Builtin
+builtinVarIdxToData = Map.fromList builtinVarIdxs
+builtinDataToVarIdx :: Map Builtin VarIdx
+builtinDataToVarIdx = Map.fromList (fmap (\(x,y)->(y,x)) builtinVarIdxs)
+builtinTextToVarIdx :: Map Text VarIdx
+builtinTextToVarIdx = fmap (builtinDataToVarIdx Map.!) (Map.fromList builtinNames)
+builtinVarIdxToText :: Map VarIdx Text
+builtinVarIdxToText = Map.fromList (fmap (\(x,y)->(y,x)) (Map.toList builtinTextToVarIdx))
 
 
--- | Since we only have one value type in our script language currently
--- (ints), we allow boolean operators by having them operate on ints.
-toIntBool :: Bool -> Int
-toIntBool True = 1
-toIntBool False = 0
-
-fromIntBool :: Int -> Bool
-fromIntBool 0 = False
-fromIntBool _ = True
+builtinsComputedValues :: StackFrameComputedValues
+builtinsComputedValues = fmap b (Map.fromList builtinVarIdxs)
+  where
+    b Nil = NilValue
+    b Truth = TrueValue
+    b f = BuiltinFunctionValue f
 
 -- | Used in Interpret.hs
 type StackFrameComputedValues = Map VarIdx RuntimeValue
 type InstructionPointer = Int
 type PendingValueIdx = Int
 
+
+isTruthy :: RuntimeValue -> Bool
+isTruthy NilValue = False
+isTruthy (PendingValue _) = error "bug: isTruthy on PendingValue"
+isTruthy _ = True
+truthValue :: Bool -> RuntimeValue
+truthValue False = NilValue
+truthValue True = TrueValue
+
 data RuntimeValue
-  = AtomValue AtomicValue
-  | BuiltinFunctionValue BuiltinFunction
+  = NilValue
+  | TrueValue
+  | AtomValue AtomicValue
+  | BuiltinFunctionValue Builtin
   -- | The instruction pointer points to the beginning of the
   -- function, and the computed values are anything in the
   -- function's closure.

@@ -51,7 +51,7 @@ main = do
     --"(lambda (x y z) (x y (x z)))"
   let compiled = case parsed of
                   Right ast ->
-                    compile builtinFunctionTextToVarIdx ast
+                    compile builtinTextToVarIdx ast
   print parsed
   print compiled
 
