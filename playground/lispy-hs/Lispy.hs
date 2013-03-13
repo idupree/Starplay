@@ -25,21 +25,8 @@ import Lispy.CompileToBytecode
 import Lispy.Interpret
 import Lispy.Show
 
-
-
-{-
-testEval :: Text -> Text -> IO ()
-testEval expr result = do
-  try (timeout (evaluate $ do --Maybe
-    Right (Program [ast]) <- P.parseOnly parseLispy expr
--}
--- better to work on the stack machine.
-
---main :: IO ()
---main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
-
 repn :: Int -> (a -> a) -> a -> a
-repn 0 f a = a
+repn 0 _ a = a
 repn n f a = repn (n-1) f (f a)
 
 run :: Int -> LispyState -> IO ()
@@ -47,7 +34,7 @@ run n state
   | n > 300 = putStrLn "Took too long; giving up."
   | otherwise = do
   putStrLn ("\n\n\nStep " List.++ show n)
-  putStr (showsStateStack state "")
+  putStr (showStateStack state)
   run (n+1) (singleStep state)
 
 
@@ -70,6 +57,6 @@ main = do
 
   run 0 (startProgram compiled)
 
-  --putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
-  --putStr (showsStateStack (repn 300 singleStep (startProgram compiled)) "")
-  --putStr (showProgramBytecode (programBytecode compiled))
+  --putStr (showStateStack (repn 12 singleStep (startProgram compiled)))
+  --putStr (showStateStack (repn 300 singleStep (startProgram compiled)))
+

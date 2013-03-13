@@ -169,10 +169,6 @@ showsStateStack :: LispyState -> ShowS
 showsStateStack (LispyState program stack _ _) =
   showsStack program stack
 
-
-
-
-
-
-
+showStateStack :: LispyState -> String
+showStateStack ls = showsStateStack ls ""
 
