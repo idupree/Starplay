@@ -31,7 +31,7 @@ repn n f a = repn (n-1) f (f a)
 
 run :: Int -> LispyState -> IO ()
 run n state
-  | n > 300 = putStrLn "Took too long; giving up."
+  | n > 3000 = putStrLn "Took too long; giving up."
   | otherwise = do
   putStrLn ("\n\n\nStep " List.++ show n)
   putStr (showStateStack state)
