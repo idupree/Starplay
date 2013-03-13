@@ -60,7 +60,9 @@ main = do
   let parsed = doParse parseSexp filename inputText
     --"abc (d  e 34) (())"
     --"(lambda (x y z) (x y (x z)))"
-  let compiled = case parsed of Right ast -> compile ast
+  let compiled = case parsed of
+                  Right ast ->
+                    compile builtinFunctionTextToVarIdx ast
   print parsed
   print compiled
   putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
@@ -148,9 +150,9 @@ seqToVector s = Vector.fromList (Foldable.toList s)
 
 -------------------- COMPILING ---------------------
 
-compile :: Located AST -> CompiledProgram
-compile ast = let
-  instrs = compile' (CompileScope Map.empty True) ast
+compile :: Map Text VarIdx -> Located AST -> CompiledProgram
+compile builtins ast = let
+  instrs = compile' (CompileScope builtins True) ast
   in CompiledProgram
     (seqToVector instrs)
     ast
@@ -290,8 +292,73 @@ type StackFrameComputedValues = Map VarIdx RuntimeValue
 type InstructionPointer = Int
 type PendingValueIdx = Int
 
+data BuiltinFunction = Plus | Minus | Times | Negate
+  | LessThan | LessEqual | GreaterThan | GreaterEqual
+  | Equal | NotEqual | And | Or | Not
+  deriving (Eq, Ord, Bounded, Enum, Show, Read)
+
+-- TODO something less arbitrary than just giving each builtin
+-- a high index that probably won't conflict with things.
+builtinFunctionVarIdxs :: [(VarIdx, BuiltinFunction)]
+builtinFunctionVarIdxs = fmap (\bf -> (negate (fromEnum bf + 40000000), bf))
+                                      [minBound..maxBound]
+builtinsComputedValues :: StackFrameComputedValues
+builtinsComputedValues = fmap BuiltinFunctionValue
+                              (Map.fromList builtinFunctionVarIdxs)
+builtinFunctionNames :: [(Text, BuiltinFunction)]
+builtinFunctionNames =
+  [("+", Plus)
+  ,("-", Minus)
+  ,("*", Times)
+  ,("negate", Negate)
+  ,("<", LessThan)
+  ,("<=", LessEqual)
+  ,(">", GreaterThan)
+  ,(">=", GreaterEqual)
+  ,("=", Equal)
+  ,("not=", NotEqual)
+  ,("and", And)
+  ,("or", Or)
+  ,("not", Not)
+  ]
+builtinFunctionVarIdxToData :: Map VarIdx BuiltinFunction
+builtinFunctionVarIdxToData = Map.fromList builtinFunctionVarIdxs
+builtinFunctionDataToVarIdx :: Map BuiltinFunction VarIdx
+builtinFunctionDataToVarIdx = Map.fromList
+                      (fmap (\(x,y)->(y,x)) builtinFunctionVarIdxs)
+builtinFunctionTextToVarIdx :: Map Text VarIdx
+builtinFunctionTextToVarIdx = fmap (builtinFunctionDataToVarIdx Map.!)
+                                (Map.fromList builtinFunctionNames)
+
+
+toIntBool :: Bool -> Int
+toIntBool True = 1
+toIntBool False = 0
+
+fromIntBool :: Int -> Bool
+fromIntBool 0 = False
+fromIntBool _ = True
+
+-- "pure" as in "no side effects"
+pureBuiltinFunction :: BuiltinFunction -> [RuntimeValue] -> RuntimeValue
+pureBuiltinFunction Plus [AtomValue a, AtomValue b] = AtomValue (a + b)
+pureBuiltinFunction Minus [AtomValue a, AtomValue b] = AtomValue (a - b)
+pureBuiltinFunction Times [AtomValue a, AtomValue b] = AtomValue (a * b)
+pureBuiltinFunction Negate [AtomValue a] = AtomValue (negate a)
+pureBuiltinFunction LessThan [AtomValue a, AtomValue b] = AtomValue (toIntBool (a < b))
+pureBuiltinFunction LessEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a <= b))
+pureBuiltinFunction GreaterThan [AtomValue a, AtomValue b] = AtomValue (toIntBool (a > b))
+pureBuiltinFunction GreaterEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a >= b))
+pureBuiltinFunction Equal [AtomValue a, AtomValue b] = AtomValue (toIntBool (a == b))
+pureBuiltinFunction NotEqual [AtomValue a, AtomValue b] = AtomValue (toIntBool (a /= b))
+pureBuiltinFunction And [AtomValue a, AtomValue b] = AtomValue (toIntBool (fromIntBool a && fromIntBool b))
+pureBuiltinFunction Or [AtomValue a, AtomValue b] = AtomValue (toIntBool (fromIntBool a || fromIntBool b))
+pureBuiltinFunction Not [AtomValue a] = AtomValue (toIntBool (not (fromIntBool a)))
+pureBuiltinFunction _ _ = error "wrong number of arguments to builtin function"
+
 data RuntimeValue
   = AtomValue AtomicValue
+  | BuiltinFunctionValue BuiltinFunction
   -- | The instruction pointer points to the beginning of the
   -- function, and the computed values are anything in the
   -- function's closure.
@@ -335,7 +402,7 @@ data LispyState = LispyState
 startProgram :: CompiledProgram -> LispyState
 startProgram program = LispyState
   program
-  (LispyStack (LispyStackFrame 0 mempty) Nothing)
+  (LispyStack (LispyStackFrame 0 builtinsComputedValues) Nothing)
   mempty
   0
 
@@ -354,21 +421,37 @@ singleStep state@(LispyState
       Just val -> dePendValue val
     dePendValue val = val
 
-    call :: VarIdx -> Vector VarIdx -> (LispyStackFrame -> LispyStack)
-         -> LispyState
-    call func args continuation = let
+    call :: Maybe VarIdx -> VarIdx -> Vector VarIdx -> LispyState -> LispyState
+    call resultElseTail func args stat = let
       funcVal = computedValues Map.! func
       argVals = fmap (computedValues Map.!) args
       argEnv = foldMap (\(idx, val) -> Map.singleton (-idx-1) val)
                        (Vector.indexed argVals)
       in case dePendValue funcVal of
-        FunctionValue initialFrame ->
-          state {
-            lsStack = (continuation
-              initialFrame{lsfComputedValues =
-                Map.union argEnv (lsfComputedValues initialFrame)})
+        FunctionValue initialFrame -> let
+            newStackFrame = initialFrame{lsfComputedValues =
+                Map.union argEnv (lsfComputedValues initialFrame)}
+          in stat{
+            lsStack = case resultElseTail of
+              Nothing -> --tail call
+                LispyStack newStackFrame (lsParent (lsStack stat))
+              Just result -> --non-tail
+                LispyStack newStackFrame (Just (result, lsStack stat))
             }
+        BuiltinFunctionValue bf ->
+          callBuiltinFunction resultElseTail bf args stat
         _ -> error "runtime error: calling a non-function"
+
+    callBuiltinFunction :: Maybe VarIdx -> BuiltinFunction -> Vector VarIdx -> LispyState -> LispyState
+    callBuiltinFunction resultElseTail bf args stat = case bf of
+      _ -> let
+        val = pureBuiltinFunction bf
+          (Vector.toList (fmap (dePendValue . (computedValues Map.!)) args))
+        in case resultElseTail of
+          Nothing -> --tail call
+            ret val stat
+          Just result -> --non-tail
+            bindValue result val stat
 
     updateStackFrame :: (LispyStackFrame -> LispyStackFrame)
                      -> LispyState -> LispyState
@@ -394,22 +477,21 @@ singleStep state@(LispyState
     goto absoluteDest st = updateStackFrame (\fr -> fr{
         lsfInstructionPointer = absoluteDest
       }) st
-  in
-  case snd (bytecode Vector.! instructionPointer) of
-    CALL result func args -> call func args (\newFrame ->
-      LispyStack newFrame (Just (result, stack)))
-    TAILCALL func args -> call func args (\newFrame ->
-      LispyStack newFrame parent)
-    LITERAL result value -> bindValue result (AtomValue value) state
-    NAME result origName -> bindValue result (computedValues Map.! origName) state
-    RETURN origName ->
-      let retVal = (computedValues Map.! origName)
-      in
-      case parent of
+
+    ret :: RuntimeValue -> LispyState -> LispyState
+    ret retVal stat =
+      case lsParent (lsStack stat) of
         Nothing -> error ("returning from the main program: "
                          List.++ show retVal)
         Just (retValDest, newStack) ->
-          bindValue retValDest retVal state{lsStack = newStack}
+          bindValue retValDest retVal (state{lsStack = newStack})
+  in
+  case snd (bytecode Vector.! instructionPointer) of
+    CALL result func args -> call (Just result) func args state
+    TAILCALL func args -> call Nothing func args state
+    LITERAL result value -> bindValue result (AtomValue value) state
+    NAME result origName -> bindValue result (computedValues Map.! origName) state
+    RETURN origName -> ret (computedValues Map.! origName) state
     MAKE_CLOSURE result vars dest -> case
       Set.foldl'
         (\(nextPending, newComputedValues, varsInClosure)
