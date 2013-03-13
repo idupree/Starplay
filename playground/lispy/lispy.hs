@@ -98,7 +98,7 @@ data BytecodeInstruction
   | NAME { bcResultName :: VarIdx, bcOriginalName :: VarIdx }
   | RETURN { bcOriginalName :: VarIdx }
   | MAKE_CLOSURE { bcResultName :: VarIdx, bcVarsInClosure :: Set VarIdx,
-                   bcRelativeDestination :: Int }
+                   bcRelativeDestination :: Int, bcParams :: Vector VarIdx }
   | GOTO { bcRelativeDestination :: Int }
   | GOTO_IF_NOT { bcRelativeDestination :: Int, bcConditionName :: VarIdx }
   --UNTIL
@@ -107,19 +107,18 @@ type VarIdx = ASTIdx
 type AtomicValue = LispyNum
 
 
--- | TODO: excludes negative scoped vars used (non-closure parameter uses)
 scopedVarsUsed :: (Foldable f) => f BytecodeInstruction -> Set VarIdx
 scopedVarsUsed = foldMap (\instr -> case instr of
-    CALL _ func args      -> mappend (Set.singleton func)
-                                     (foldMap Set.singleton args)
-    TAILCALL func args    -> mappend (Set.singleton func)
-                                     (foldMap Set.singleton args)
-    LITERAL _ _           -> mempty
-    NAME _ originalName   -> Set.singleton originalName
-    RETURN originalName   -> Set.singleton originalName
-    MAKE_CLOSURE _ vars _ -> vars
-    GOTO _                -> mempty
-    GOTO_IF_NOT _ cond    -> Set.singleton cond
+    CALL _ func args        -> mappend (Set.singleton func)
+                                       (foldMap Set.singleton args)
+    TAILCALL func args      -> mappend (Set.singleton func)
+                                       (foldMap Set.singleton args)
+    LITERAL _ _             -> mempty
+    NAME _ originalName     -> Set.singleton originalName
+    RETURN originalName     -> Set.singleton originalName
+    MAKE_CLOSURE _ vars _ _ -> vars
+    GOTO _                  -> mempty
+    GOTO_IF_NOT _ cond      -> Set.singleton cond
   )
 
 type ASTIdx = Int
@@ -257,11 +256,9 @@ compile' scope (L _ ast) = let
             ]
         _ -> error letrecSyntaxMsg
       ASTIdentifier _ "lambda" -> case args of
-        [L _ (ASTList _ params), body] -> let
-          bindingEnv = Map.fromList (Vector.toList (
-            fmap (\ (paramNum, L _ (ASTIdentifier _ varname))
-                      -> (varname, -paramNum - 1))
-            (Vector.indexed params)))
+        [L _ (ASTList _ paramsAST), body] -> let
+          params = fmap (\(L _ (ASTIdentifier idx varname)) -> (varname, idx)) paramsAST
+          bindingEnv = Map.fromList (Vector.toList params)
           bodyScope = scope {
             compileScopeEnv = (Map.union bindingEnv (compileScopeEnv scope)),
             compileScopeIsTailPosition = True
@@ -271,7 +268,7 @@ compile' scope (L _ ast) = let
             (Set.fromList (Map.elems (compileScopeEnv scope)))
             (scopedVarsUsed (fmap snd bodyCode))
           in mconcat [
-            instr (MAKE_CLOSURE (astIdx ast) bodyClosureUses 1),
+            instr (MAKE_CLOSURE (astIdx ast) bodyClosureUses 1 (fmap snd params)),
             instr (GOTO (Seq.length bodyCode)),
             bodyCode
             ]
@@ -375,7 +372,7 @@ data RuntimeValue
   -- | The instruction pointer points to the beginning of the
   -- function, and the computed values are anything in the
   -- function's closure.
-  | FunctionValue LispyStackFrame
+  | FunctionValue LispyStackFrame (Vector VarIdx {-params-})
   -- | This is created when a closure in a letrec
   -- closes over a value that has not yet finished being
   -- defined/evaluated.
@@ -439,10 +436,9 @@ singleStep state@(LispyState
       computedValues = (lsfComputedValues (lsFrame (lsStack stat)))
       funcVal = computedValues Map.! func
       argVals = fmap (computedValues Map.!) args
-      argEnv = foldMap (\(idx, val) -> Map.singleton (-idx-1) val)
-                       (Vector.indexed argVals)
       in case dePendValue funcVal of
-        FunctionValue initialFrame -> let
+        FunctionValue initialFrame params -> let
+            argEnv = Map.fromList (Vector.toList (Vector.zip params argVals))
             newStackFrame = initialFrame{lsfComputedValues =
                 Map.union argEnv (lsfComputedValues initialFrame)}
           in stat{
@@ -511,7 +507,7 @@ singleStep state@(LispyState
     LITERAL result value -> bindValue result (AtomValue value) state
     NAME result origName -> bindValue result (computedValues Map.! origName) state
     RETURN origName -> ret (computedValues Map.! origName) state
-    MAKE_CLOSURE result vars dest -> case
+    MAKE_CLOSURE result vars dest params -> case
       Set.foldl'
         (\(nextPending, newComputedValues, varsInClosure)
           varInClosure ->
@@ -528,8 +524,9 @@ singleStep state@(LispyState
         (nextPendingValueIdx, computedValues, mempty)
         vars
       of (nextPending, newComputedValues, varsInClosure) -> let
-            value = FunctionValue (LispyStackFrame
-                      (instructionPointer+1+dest) varsInClosure)
+            value = FunctionValue
+              (LispyStackFrame (instructionPointer+1+dest) varsInClosure)
+              params
             -- Note: the bindValue happens *after* putting in
             -- newComputedValues.  This lets bindValue detect
             -- whether the current closure is pending (self-recursive
@@ -763,7 +760,7 @@ showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
   RETURN origName ->
     showString "RETURN " .
     var origName
-  MAKE_CLOSURE result vars dest ->
+  MAKE_CLOSURE result vars dest params ->
     showString "MAKE_CLOSURE " .
     var result .
     showString " =" .
@@ -777,7 +774,8 @@ showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
       showChar ']'
     ) .
     showChar ' ' .
-    relDest dest
+    relDest dest .
+    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) params)
   GOTO dest ->
     showString "GOTO " . relDest dest
   GOTO_IF_NOT dest cond ->
@@ -794,30 +792,35 @@ showProgramBytecode = flip showsProgramBytecode ""
 -}
 
 
-showsStackFrame :: Vector (Located AST) -> LispyStackFrame -> ShowS
-showsStackFrame astsByIdx (LispyStackFrame instructionPointer computedValues) =
+showsStackFrame :: CompiledProgram -> LispyStackFrame -> ShowS
+showsStackFrame program (LispyStackFrame instructionPointer computedValues) =
   showString "Instruction pointer: " .
   shows instructionPointer .
+  let (astidx, code) = (programBytecode program) Vector.! instructionPointer in
+  showString "  " .
+  showsVarIdx (programASTsByIdx program) astidx .
+  showString "  " .
+  showsBytecodeInstruction (programASTsByIdx program) instructionPointer code .
   appEndo (foldMap (\(idx, val) -> Endo (
     showString "\n\t" .
-    showsVarIdx astsByIdx idx . showString " = " . shows val
+    showsVarIdx (programASTsByIdx program) idx . showString " = " . shows val
     )) (Map.toList computedValues)) .
   showChar '\n'
 
-showsStack :: Vector (Located AST) -> LispyStack -> ShowS
-showsStack astsByIdx (LispyStack frame parent) =
-  showsStackFrame astsByIdx frame .
+showsStack :: CompiledProgram -> LispyStack -> ShowS
+showsStack program (LispyStack frame parent) =
+  showsStackFrame program frame .
   case parent of
     Just (retValDest, nextStack) ->
       showString "returning value to " .
-      showsVarIdx astsByIdx retValDest .
+      showsVarIdx (programASTsByIdx program) retValDest .
       showChar '\n' .
-      showsStack astsByIdx nextStack
+      showsStack program nextStack
     Nothing -> id
 
 showsStateStack :: LispyState -> ShowS
 showsStateStack (LispyState program stack _ _) =
-  showsStack (programASTsByIdx program) stack
+  showsStack program stack
 
 
 
