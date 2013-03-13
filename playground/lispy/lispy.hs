@@ -43,7 +43,7 @@ testEval expr result = do
 
 main :: IO ()
 main = let
-  parsed = doParseLispyProgram "test str"
+  parsed = doParse parseSexp "test str"
     --"abc (d  e 34) (())"
     "(lambda (x y z) (x y (x z)))"
   compiled = case parsed of Right ast -> compile ast
@@ -358,11 +358,12 @@ parseList = do
   return (ASTList idx (Vector.fromList asts))
 
 parseSexp :: LispyParser (Located AST)
-parseSexp = parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression"
+parseSexp = do
+  P.skipMany P.space
+  parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression"
 
 parseWithLocation :: LispyParser a -> LispyParser (Located a)
 parseWithLocation parser = do
-  P.skipMany P.space
   beginLoc <- P.getPosition
   LocText beginCharIdx beginText <- P.getInput
   
@@ -375,7 +376,6 @@ parseWithLocation parser = do
         beginLoc
         endLoc
   
-  P.skipMany P.space
   return (L info parsed)
 
 parseLispyProgram :: LispyParser (Located AST)
@@ -384,9 +384,15 @@ parseLispyProgram = do
   fmap (fmap (ASTList idx . Vector.fromList))
     (parseWithLocation (P.many parseSexp))
 
-doParseLispyProgram :: P.SourceName -> Text -> Either P.ParseError (Located AST)
-doParseLispyProgram sourceName text =
-  P.runParser parseLispyProgram 0 sourceName (LocText 0 text)
+doParse :: LispyParser a -> P.SourceName -> Text -> Either P.ParseError a
+doParse parser sourceName text = let
+    fullParser = do
+      result <- parser
+      P.skipMany P.space
+      P.eof
+      return result
+  in
+  P.runParser fullParser 0 sourceName (LocText 0 text)
 
 
 {-
