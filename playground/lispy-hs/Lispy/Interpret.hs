@@ -48,83 +48,6 @@ singleStep state@(LispyState
                 parent)
               pendingValues
               nextPendingValueIdx) =
-  let
-    dePendValue :: RuntimeValue -> RuntimeValue
-    dePendValue (PendingValue idx) = case Map.lookup idx pendingValues of
-      Nothing -> error "Used a value in a letrec before it was defined"
-      Just val -> dePendValue val
-    dePendValue val = val
-
-    call :: Maybe VarIdx -> VarIdx -> Vector VarIdx -> LispyState -> LispyState
-    call resultElseTail func args stat = let
-      computedValues = (lsfComputedValues (lsFrame (lsStack stat)))
-      funcVal = computedValues Map.! func
-      argVals = fmap (computedValues Map.!) args
-      in case dePendValue funcVal of
-        FunctionValue initialFrame params -> let
-            argEnv = Map.fromList (Vector.toList (Vector.zip params argVals))
-            newStackFrame = initialFrame{lsfComputedValues =
-                Map.union argEnv (lsfComputedValues initialFrame)}
-          in stat{
-            lsStack = case resultElseTail of
-              Nothing -> --tail call
-                LispyStack newStackFrame (lsParent (lsStack stat))
-              Just result -> --non-tail
-                LispyStack newStackFrame (Just (result, lsStack stat))
-            }
-        BuiltinFunctionValue bf ->
-          callBuiltinFunction resultElseTail bf args stat
-        _ -> error "runtime error: calling a non-function"
-
-    callBuiltinFunction :: Maybe VarIdx -> BuiltinFunction -> Vector VarIdx -> LispyState -> LispyState
-    callBuiltinFunction resultElseTail bf args stat = case bf of
-      _ -> let
-        computedValues = (lsfComputedValues (lsFrame (lsStack stat)))
-        val = pureBuiltinFunction bf
-          (Vector.toList (fmap (dePendValue . (computedValues Map.!)) args))
-        in case resultElseTail of
-          Nothing -> --tail call
-            ret val stat
-          Just result -> --non-tail
-            bindValue result val stat
-
-    updateStackFrame :: (LispyStackFrame -> LispyStackFrame)
-                     -> LispyState -> LispyState
-    updateStackFrame f stat = stat{ lsStack = let stac = lsStack stat in
-      stac{ lsFrame = f (lsFrame stac) } }
-
-    bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
-    bindValue result value stat = let
-      frame = lsFrame (lsStack stat)
-      computedValues = lsfComputedValues frame
-      instructionPointer = lsfInstructionPointer frame
-      in case
-        Map.insertLookupWithKey (\_ newValue _ -> newValue)
-          result value computedValues of
-      (oldVal, newComputedValues) -> let
-        newState = updateStackFrame (\fr -> fr{
-            lsfComputedValues = newComputedValues,
-            lsfInstructionPointer = instructionPointer+1
-          }) stat
-        in case oldVal of
-          Just (PendingValue pendingValueIdx) ->
-            newState{
-              lsPendingValues = Map.insert pendingValueIdx value pendingValues }
-          _ -> newState
-
-    goto :: InstructionPointer -> LispyState -> LispyState
-    goto absoluteDest st = updateStackFrame (\fr -> fr{
-        lsfInstructionPointer = absoluteDest
-      }) st
-
-    ret :: RuntimeValue -> LispyState -> LispyState
-    ret retVal stat =
-      case lsParent (lsStack stat) of
-        Nothing -> error ("returning from the main program: "
-                         List.++ show retVal)
-        Just (retValDest, newStack) ->
-          bindValue retValDest retVal (state{lsStack = newStack})
-  in
   case snd (bytecode Vector.! instructionPointer) of
     CALL result func args -> call (Just result) func args state
     TAILCALL func args -> call Nothing func args state
@@ -168,3 +91,82 @@ singleStep state@(LispyState
       then goto (instructionPointer+1+dest) state
       else goto (instructionPointer+1) state
 
+
+dePendValue :: LispyState -> RuntimeValue -> RuntimeValue
+dePendValue state (PendingValue idx) =
+  case Map.lookup idx (lsPendingValues state) of
+    Nothing -> error "Used a value in a letrec before it was defined"
+    Just val -> dePendValue state val
+dePendValue _ val = val
+
+call :: Maybe VarIdx -> VarIdx -> Vector VarIdx -> LispyState -> LispyState
+call resultElseTail func args state = let
+  computedValues = (lsfComputedValues (lsFrame (lsStack state)))
+  funcVal = computedValues Map.! func
+  argVals = fmap (computedValues Map.!) args
+  in case dePendValue state funcVal of
+    FunctionValue initialFrame params -> let
+        argEnv = Map.fromList (Vector.toList (Vector.zip params argVals))
+        newStackFrame = initialFrame{lsfComputedValues =
+            Map.union argEnv (lsfComputedValues initialFrame)}
+      in state{
+        lsStack = case resultElseTail of
+          Nothing -> --tail call
+            LispyStack newStackFrame (lsParent (lsStack state))
+          Just result -> --non-tail
+            LispyStack newStackFrame (Just (result, lsStack state))
+        }
+    BuiltinFunctionValue bf ->
+      callBuiltinFunction resultElseTail bf args state
+    _ -> error "runtime error: calling a non-function"
+
+callBuiltinFunction :: Maybe VarIdx -> BuiltinFunction -> Vector VarIdx -> LispyState -> LispyState
+callBuiltinFunction resultElseTail bf args state = case bf of
+  _ -> let
+    computedValues = (lsfComputedValues (lsFrame (lsStack state)))
+    val = pureBuiltinFunction bf
+      (Vector.toList (fmap (dePendValue state . (computedValues Map.!)) args))
+    in case resultElseTail of
+      Nothing -> --tail call
+        ret val state
+      Just result -> --non-tail
+        bindValue result val state
+
+updateStackFrame :: (LispyStackFrame -> LispyStackFrame)
+                 -> LispyState -> LispyState
+updateStackFrame f state = state{ lsStack = let stack = lsStack state in
+  stack{ lsFrame = f (lsFrame stack) } }
+
+bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
+bindValue result value state = let
+  frame = lsFrame (lsStack state)
+  computedValues = lsfComputedValues frame
+  instructionPointer = lsfInstructionPointer frame
+  in case
+    Map.insertLookupWithKey (\_ newValue _ -> newValue)
+      result value computedValues of
+  (oldVal, newComputedValues) -> let
+    newState = updateStackFrame (\fr -> fr{
+        lsfComputedValues = newComputedValues,
+        lsfInstructionPointer = instructionPointer+1
+      }) state
+    in case oldVal of
+      Just (PendingValue pendingValueIdx) ->
+        newState{
+          lsPendingValues = Map.insert pendingValueIdx value
+            (lsPendingValues state)
+          }
+      _ -> newState
+
+goto :: InstructionPointer -> LispyState -> LispyState
+goto absoluteDest state = updateStackFrame (\fr -> fr{
+    lsfInstructionPointer = absoluteDest
+  }) state
+
+ret :: RuntimeValue -> LispyState -> LispyState
+ret retVal state =
+  case lsParent (lsStack state) of
+    Nothing -> error ("returning from the main program: "
+                     List.++ show retVal)
+    Just (retValDest, newStack) ->
+      bindValue retValDest retVal (state{lsStack = newStack})
