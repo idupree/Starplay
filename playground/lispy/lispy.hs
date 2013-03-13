@@ -6,12 +6,12 @@
 --module Lispy where
 module Main where
 
-import Control.Exception
-import System.Timeout
+--import Control.Exception
+--import System.Timeout
 
 import qualified Data.Char as Char
 import Data.Text as Text
-import Data.Ratio
+--import Data.Ratio
 import Data.List as List
 import Data.Vector as Vector
 import Data.Map.Strict as Map
@@ -25,7 +25,7 @@ import Data.Sequence as Seq
 import qualified Text.Parsec as P
 --import Text.Parsec.Text () --for the instance
 import Control.Applicative
-import MonadLib as M
+--import MonadLib as M
 
 -- Haddock it :DD
 -- or literate haskell hrm
@@ -42,7 +42,12 @@ testEval expr result = do
 --main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 
 main :: IO ()
-main = print (doParseLispyProgram "test str" "abc (d  e 34) (())")
+main = let
+  parsed = doParseLispyProgram "test str" "abc (d  e 34) (())"
+  compiled = case parsed of Right ast -> compile ast
+  in do
+  print parsed
+  putStr (showProgramBytecode (programBytecode compiled))
 
 
 -- |
@@ -121,6 +126,10 @@ data CompiledProgram = CompiledProgram
   , programAST :: !(Located AST)
   , programASTsByIdx :: !(Vector (Located AST))
   }
+--instance Show CompiledProgram where
+showProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> String
+showProgramBytecode = foldMap (\(_, instr) -> show instr)
+  
 
 -- how does let or arg-binding work
 -- current stack frame astidx indexed
@@ -178,6 +187,7 @@ compile' scope (L _ ast) = let
         then instr (RETURN varIdx)
         else instr (NAME (astIdx ast) varIdx)
   ASTList _ list -> case Vector.toList list of
+    [] -> error "() as a nil list literal not presently supported"
     (func : args) -> case unL func of
       ASTIdentifier _ "if" -> case args of
         --[cond, then_] ->
@@ -196,20 +206,25 @@ compile' scope (L _ ast) = let
             else mconcat [
               thenCode,
               instr (NAME (astIdx ast) (lASTIdx then_)),
-              instr (GOTO (Seq.length elseCode))
+              instr (GOTO (Seq.length elseCode2))
               ]
           in mconcat [
             condCode,
             instr (GOTO_IF_NOT (Seq.length thenCode2) (lASTIdx cond)),
             thenCode2,
-            elseCode
+            elseCode2
             ]
-      ASTIdentifier _ "letrec" -> case args of
+        _ -> error "syntax error: 'if' must match (if cond then else)"
+      ASTIdentifier _ "letrec" -> let
+        letrecSyntaxMsg =
+          "syntax error: 'letrec' must match (letrec ((var expr)...) result)"
+        in case args of
         [L _ (ASTList _ bindings), result] -> let
           parseBinding :: Located AST -> (Text, Located AST)
           parseBinding (L _ (ASTList _
             (Vector.toList -> [L _ (ASTIdentifier _ varname), expr])))
             = (varname, expr)
+          parseBinding _ = error letrecSyntaxMsg
           parsedBindings = fmap parseBinding bindings
           bindingEnv = Map.fromList (Vector.toList (
             (fmap (\ (varname, expr) -> (varname, lASTIdx expr)) parsedBindings)))
@@ -224,6 +239,7 @@ compile' scope (L _ ast) = let
             then mempty
             else instr (NAME (astIdx ast) (lASTIdx result))
             ]
+        _ -> error letrecSyntaxMsg
       ASTIdentifier _ "lambda" -> case args of
         [L _ (ASTList _ params), body] -> let
           bindingEnv = Map.fromList (Vector.toList (
@@ -243,13 +259,15 @@ compile' scope (L _ ast) = let
             instr (GOTO (Seq.length bodyCode)),
             bodyCode
             ]
+        _ -> error "syntax error: 'lambda' must match (lambda (var...) body)"
       ASTIdentifier _ "do" -> case List.reverse args of
-        (last : (List.reverse -> init)) -> mconcat [
-          foldMap (compile' scope{compileScopeIsTailPosition=False}) init,
-          compile' scope last,
+        [] -> mempty
+        (last_ : (List.reverse -> init_)) -> mconcat [
+          foldMap (compile' scope{compileScopeIsTailPosition=False}) init_,
+          compile' scope last_,
           if compileScopeIsTailPosition scope
           then mempty
-          else instr (NAME (astIdx ast) (lASTIdx last))
+          else instr (NAME (astIdx ast) (lASTIdx last_))
           ]
       _ -> let
         funcCode = compile' scope{compileScopeIsTailPosition=False} func
@@ -347,13 +365,13 @@ parseWithLocation parser = do
   
   endLoc <- P.getPosition
   LocText endCharIdx _ <- P.getInput
-  let sourceLocInfo = SourceLocInfo
+  let info = SourceLocInfo
         (Text.take (endCharIdx - beginCharIdx) beginText)
         beginLoc
         endLoc
   
   P.skipMany P.space
-  return (L sourceLocInfo parsed)
+  return (L info parsed)
 
 parseLispyProgram :: LispyParser (Located AST)
 parseLispyProgram = do
