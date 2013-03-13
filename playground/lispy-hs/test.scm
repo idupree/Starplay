@@ -1,3 +1,10 @@
+; This file might or might not be valid Scheme code;
+; I only put the .scm extension on so that editors
+; would recognize what sort of syntax it has.
+;
+; Unlike typical Lisp files, this file consists
+; of a single expression that is evaluated by
+; the testing code.
 (letrec
   (
   ; Miscellaneous little testing
