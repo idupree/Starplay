@@ -56,19 +56,18 @@ instance Show CompiledProgram where
 
 showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
 showsVarIdx astsByIdx idx =
-  shows idx .
-  showChar '(' .
-  ( case Map.lookup idx builtinVarIdxToText of
-      Just builtinName ->
-        showString "builtin " .
-        showString (Text.unpack builtinName)
-      Nothing ->
-        case astsByIdx Vector.! idx of
-          L source ast ->showsASTConciseSummary ast .
-            showChar ':' . shows (sourceLine (sourceBegin source)) .
-            showChar ':' . shows (sourceColumn (sourceBegin source))
-  ) .
-  showChar ')'
+  case Map.lookup idx builtinVarIdxToText of
+    Just builtinName ->
+      showChar '#' .
+      showString (Text.unpack builtinName)
+    Nothing ->
+      shows idx .
+      showChar '(' .
+      case astsByIdx Vector.! idx of
+        L source ast -> showsASTConciseSummary ast .
+          showChar ':' . shows (sourceLine (sourceBegin source)) .
+          showChar ':' . shows (sourceColumn (sourceBegin source)) .
+          showChar ')'
 
 showsASTConciseSummary :: AST -> ShowS
 showsASTConciseSummary ast = case ast of
