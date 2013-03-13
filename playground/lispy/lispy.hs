@@ -344,7 +344,9 @@ compile' scope (L _ ast) = let
             (fmap (\ (varname, expr) -> (varname, lASTIdx expr)) parsedBindings)))
           resultScope = scope { compileScopeEnv =
             (Map.union bindingEnv (compileScopeEnv scope)) }
-          bindingsCode = foldMap (compile' resultScope . snd) parsedBindings
+          bindingsCode = foldMap (compile'
+                resultScope{compileScopeIsTailPosition=False}
+            . snd) parsedBindings
           resultCode = compile' resultScope result
           in mconcat [
             bindingsCode,
