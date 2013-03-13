@@ -169,7 +169,7 @@ data CompileScope = CompileScope
 compile' :: CompileScope -> Located AST -> Seq (ASTIdx, BytecodeInstruction)
 compile' scope (L _ ast) = let
   instr i = Seq.singleton (astIdx ast, i)
-  in 
+  in
   case ast of
   ASTNumber _ v -> mconcat [
     instr (LITERAL (astIdx ast) v),
@@ -540,16 +540,16 @@ parseWithLocation :: LispyParser a -> LispyParser (Located a)
 parseWithLocation parser = do
   beginLoc <- P.getPosition
   LocText beginCharIdx beginText <- P.getInput
-  
+
   parsed <- parser
-  
+
   endLoc <- P.getPosition
   LocText endCharIdx _ <- P.getInput
   let info = SourceLocInfo
         (Text.take (endCharIdx - beginCharIdx) beginText)
         beginLoc
         endLoc
-  
+
   return (L info parsed)
 
 parseLispyProgram :: LispyParser (Located AST)
@@ -577,7 +577,7 @@ doParse parser sourceName text = let
 
 instance (Show a) => Show (Located a) where
   showsPrec prec (L _ val) = showsPrec prec val
-  
+
 instance Show AST where
   showsPrec _ (ASTNumber _ num) = shows num
   showsPrec _ (ASTIdentifier _ ident) = showString (Text.unpack ident)
@@ -615,7 +615,7 @@ instance Show CompiledProgram where
 showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
 showsVarIdx astsByIdx idx =
   shows idx .
-  showChar '(' . 
+  showChar '(' .
   ( if idx < 0
     then showString "arg " . shows (-idx)
     else case astsByIdx Vector.! idx of
