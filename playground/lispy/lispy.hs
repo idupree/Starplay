@@ -216,7 +216,7 @@ showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
       showString " [" .
       List.foldr1
         (\s rest -> s . showChar ' ' . rest)
-        (fmap shows (Set.toList vars)) .
+        (fmap var (Set.toList vars)) .
       showChar ']'
     ) .
     showChar ' ' .
