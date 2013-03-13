@@ -270,7 +270,9 @@ compile' scope (L _ ast) = let
             (scopedVarsUsed (fmap snd bodyCode))
           in mconcat [
             instr (MAKE_CLOSURE (astIdx ast) bodyClosureUses 1 (fmap snd params)),
-            instr (GOTO (Seq.length bodyCode)),
+              if compileScopeIsTailPosition scope
+              then instr (RETURN (astIdx ast))
+              else instr (GOTO (Seq.length bodyCode)),
             bodyCode
             ]
         _ -> error "syntax error: 'lambda' must match (lambda (var...) body)"
