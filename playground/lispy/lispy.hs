@@ -63,8 +63,8 @@ main = do
   let compiled = case parsed of Right ast -> compile ast
   print parsed
   print compiled
-  putStr (showsStateStack (repn 7 singleStep (startProgram compiled)) "")
-  putStr (showsStateStack (repn 30 singleStep (startProgram compiled)) "")
+  putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
+  putStr (showsStateStack (repn 3000 singleStep (startProgram compiled)) "")
   --putStr (showProgramBytecode (programBytecode compiled))
 
 
