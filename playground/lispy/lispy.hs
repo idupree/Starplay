@@ -122,128 +122,11 @@ data AST
 lASTIdx :: Located AST -> ASTIdx
 lASTIdx (L _ ast) = astIdx ast
 
-instance (Show a) => Show (Located a) where
-  showsPrec prec (L _ val) = showsPrec prec val
-  
-instance Show AST where
-  showsPrec _ (ASTNumber _ num) = shows num
-  showsPrec _ (ASTIdentifier _ ident) = showString (Text.unpack ident)
-  showsPrec _ (ASTList _ members) =
-    if Vector.null members
-    then showString "()"
-    else
-    showChar '(' .
-    Vector.foldr1
-      (\s rest -> s . showChar ' ' . rest)
-      (fmap (shows . unL) members) .
-    showChar ')'
-
-
 data CompiledProgram = CompiledProgram
   { programBytecode :: !(Vector (ASTIdx, BytecodeInstruction))
   , programAST :: !(Located AST)
   , programASTsByIdx :: !(Vector (Located AST))
   }
-instance Show CompiledProgram where
-  showsPrec _ (CompiledProgram bytecode (L progSource _) astsByIdx) =
-    showString (Text.unpack (sourceText progSource)) .
-    showChar '\n' .
-    appEndo (foldMap
-      (\(bytecodeIdx, (astidx, instr)) -> Endo (
-        let
-          motherInstructionDesc = showsVarIdx astsByIdx astidx
-          bytecodeIdxDesc = shows bytecodeIdx
-        in
-        showString (List.replicate
-          (max 0 (3 - List.length (bytecodeIdxDesc ""))) ' ') .
-        shows bytecodeIdx .
-        showString "  " .
-        motherInstructionDesc .
-        showString (List.replicate
-          (max 1 (22 - List.length (motherInstructionDesc ""))) ' ') .
-        showsBytecodeInstruction astsByIdx bytecodeIdx instr . showChar '\n'
-      ))
-      (Vector.indexed bytecode))
-
-showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
-showsVarIdx astsByIdx idx =
-  shows idx .
-  showChar '(' . 
-  ( if idx < 0
-    then showString "arg " . shows (-idx)
-    else case astsByIdx Vector.! idx of
-      L source ast ->showsASTConciseSummary ast .
-        showChar ':' . shows (P.sourceLine (sourceBegin source)) .
-        showChar ':' . shows (P.sourceColumn (sourceBegin source))
-  ) .
-  showChar ')'
-
-showsASTConciseSummary :: AST -> ShowS
-showsASTConciseSummary ast = case ast of
-  ASTNumber _ num -> shows num
-  ASTIdentifier _ ident -> showString (Text.unpack ident)
-  ASTList _ members -> case Vector.headM members of
-    Just (L _ ast') -> showChar '(' . showsASTConciseSummary ast' .
-      if Vector.length members > 1 then showString "…)" else showChar ')'
-    Nothing -> showString "()"
-
-showsBytecodeInstruction :: Vector (Located AST) -> Int -> BytecodeInstruction -> ShowS
-showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
-    var = showsVarIdx astsByIdx
-    relDest dest = showChar '+' . shows dest . showChar '(' .
-      shows (bytecodeIdx + 1 + dest) . showChar ')'
-  in case bytecode of
-  CALL result func args ->
-    showString "CALL " .
-    var result .
-    showString " = " . var func .
-    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
-  TAILCALL func args ->
-    showString "TAILCALL " .
-    var func .
-    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
-  LITERAL result value ->
-    showString "LITERAL " .
-    var result .
-    showString " = " .
-    shows value
-  NAME result origName ->
-    showString "NAME " .
-    var result .
-    showString " = " .
-    var origName
-  RETURN origName ->
-    showString "RETURN " .
-    var origName
-  MAKE_CLOSURE result vars dest ->
-    showString "MAKE_CLOSURE " .
-    var result .
-    showString " =" .
-    ( if Set.null vars
-      then id
-      else
-      showString " [" .
-      List.foldr1
-        (\s rest -> s . showChar ' ' . rest)
-        (fmap var (Set.toList vars)) .
-      showChar ']'
-    ) .
-    showChar ' ' .
-    relDest dest
-  GOTO dest ->
-    showString "GOTO " . relDest dest
-  GOTO_IF_NOT dest cond ->
-    showString "GOTO_IF_NOT " . relDest dest .
-    showChar ' ' .
-    var cond
-
-{-
-showsProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> ShowS
-showsProgramBytecode = appEndo . foldMap
-  (\(_, instr) -> Endo (shows instr . showChar '\n'))
-showProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> String
-showProgramBytecode = flip showsProgramBytecode ""
--}
 
 -- how does let or arg-binding work
 -- current stack frame astidx indexed
@@ -262,6 +145,8 @@ indexAST astToIndex = let
 -- This implementation could be faster because Seq has O(1) length.
 seqToVector :: Seq a -> Vector a
 seqToVector s = Vector.fromList (Foldable.toList s)
+
+-------------------- COMPILING ---------------------
 
 compile :: Located AST -> CompiledProgram
 compile ast = let
@@ -397,119 +282,9 @@ compile' scope (L _ ast) = let
           instr (call (lASTIdx func) (Vector.fromList (fmap lASTIdx args)))
           ]
 
-
--- TODO using ByteString instead of Text would improve the asymptotic
--- complexity (Text doesn't have O(1) length or slicing)
--- but then we need to parse UTF-8 chars with parsec.
-data LocText = LocText {-#UNPACK#-}!Int !Text
-instance (Monad m) => P.Stream LocText m Char where
-  uncons (LocText loc text) = return (fmap (fmap (LocText (loc+1))) (Text.uncons text))
-  {-# INLINE uncons #-}
-
 type LispyNum = Int
-type LispyParser = P.Parsec LocText ASTIdx
 
-
-parseComment :: LispyParser ()
-parseComment = (P.char ';' >> P.skipMany (P.noneOf "\n\r")) P.<?> "comment"
-
-parseWhitespaceAndComments :: LispyParser ()
-parseWhitespaceAndComments =
-  P.skipMany (P.skipMany1 P.space <|> parseComment)
-
-schemeIdentifierChar :: LispyParser Char
-schemeIdentifierChar = P.satisfy (\c ->
-    {-Attoparsec has inClass-}
-    Set.member c (Set.fromList "-!$%&*+.\\/:<=>?@^_~")
-    || Char.isAlphaNum c
-  )
-
-parseNaturalNumber :: LispyParser Int
-parseNaturalNumber = go 0
-  where
-    go n = do
-      d <- P.digit
-      let n' = n * 10 + (Char.digitToInt d)
-      P.option n' (go n')
-
-parseNumber :: LispyParser LispyNum
-parseNumber =
-  fmap negate (P.char '-' >> parseNaturalNumber)
-  <|> parseNaturalNumber
-
-parserNextASTIdx :: LispyParser ASTIdx
-parserNextASTIdx = do
-  idx <- P.getState
-  P.putState (idx + 1)
-  return idx
-
-parseAtom :: LispyParser AST
-parseAtom =
-  P.choice (List.map P.try
-  [ do
-      num <- parseNumber P.<?> "number"
-      idx <- parserNextASTIdx
-      return (ASTNumber idx num)
-  , do
-      ident <- (P.many1 schemeIdentifierChar) P.<?> "identifier"
-      idx <- parserNextASTIdx
-      return (ASTIdentifier idx (Text.pack ident))
-  ])
-{-
-  [ fmap (\rat -> Number (LispyNum rat True)) rational
-  , fmap (\str -> Ident str) $ many1 schemeIdentifierChar
-  , fmap (const Void) $ string "#void"
-  , fmap (const (Boolean True)) $ string "#true"
-  , fmap (const (Boolean False)) $ string "#false"
-  , fmap (const UnboundVariable) $ string "#unbound-variable"
-  -- warn/fail if it's not a known builtin function?
-  , fmap (\str -> BuiltinFunction str) $ P.char '#' >> many1 schemeIdentifierChar
-  ]-}
-
-parseList :: LispyParser AST
-parseList = do
-  _ <- P.char '('
-  idx <- parserNextASTIdx
-  asts <- P.many parseSexp
-  _ <- P.char ')'
-  return (ASTList idx (Vector.fromList asts))
-
-parseSexp :: LispyParser (Located AST)
-parseSexp = P.between parseWhitespaceAndComments parseWhitespaceAndComments
-  (parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression")
-
-parseWithLocation :: LispyParser a -> LispyParser (Located a)
-parseWithLocation parser = do
-  beginLoc <- P.getPosition
-  LocText beginCharIdx beginText <- P.getInput
-  
-  parsed <- parser
-  
-  endLoc <- P.getPosition
-  LocText endCharIdx _ <- P.getInput
-  let info = SourceLocInfo
-        (Text.take (endCharIdx - beginCharIdx) beginText)
-        beginLoc
-        endLoc
-  
-  return (L info parsed)
-
-parseLispyProgram :: LispyParser (Located AST)
-parseLispyProgram = do
-  idx <- parserNextASTIdx
-  fmap (fmap (ASTList idx . Vector.fromList))
-    (parseWithLocation (P.many parseSexp))
-
-doParse :: LispyParser a -> P.SourceName -> Text -> Either P.ParseError a
-doParse parser sourceName text = let
-    fullParser = do
-      result <- parser
-      P.eof
-      return result
-  in
-  P.runParser fullParser 0 sourceName (LocText 0 text)
-
-
+------------------- INTERPRETING -------------------
 
 type StackFrameComputedValues = Map VarIdx RuntimeValue
 type InstructionPointer = Int
@@ -541,36 +316,11 @@ data LispyStackFrame = LispyStackFrame
   }
   deriving (Eq, Ord, Show)
 
-showsStackFrame :: Vector (Located AST) -> LispyStackFrame -> ShowS
-showsStackFrame astsByIdx (LispyStackFrame instructionPointer computedValues) =
-  showString "Instruction pointer: " .
-  shows instructionPointer .
-  appEndo (foldMap (\(idx, val) -> Endo (
-    showString "\n\t" .
-    showsVarIdx astsByIdx idx . showString " = " . shows val
-    )) (Map.toList computedValues)) .
-  showChar '\n'
-
 data LispyStack = LispyStack
   { lsFrame :: LispyStackFrame
   , lsParent :: Maybe (VarIdx, LispyStack)
   }
   deriving (Eq, Ord, Show)
-
-showsStack :: Vector (Located AST) -> LispyStack -> ShowS
-showsStack astsByIdx (LispyStack frame parent) =
-  showsStackFrame astsByIdx frame .
-  case parent of
-    Just (retValDest, nextStack) ->
-      showString "returning value to " .
-      showsVarIdx astsByIdx retValDest .
-      showChar '\n' .
-      showsStack astsByIdx nextStack
-    Nothing -> id
-
-showsStateStack :: LispyState -> ShowS
-showsStateStack (LispyState program stack _ _) =
-  showsStack (programASTsByIdx program) stack
 
 data LispyState = LispyState
   { lsCompiledProgram :: CompiledProgram
@@ -695,6 +445,296 @@ singleStep state@(LispyState
       if (computedValues Map.! cond) == AtomValue 0
       then goto (instructionPointer+1+dest) state
       else goto (instructionPointer+1) state
+
+
+
+
+
+
+
+
+
+
+
+------------------ PARSING -----------------------
+
+-- TODO using ByteString instead of Text would improve the asymptotic
+-- complexity (Text doesn't have O(1) length or slicing)
+-- but then we need to parse UTF-8 chars with parsec.
+data LocText = LocText {-#UNPACK#-}!Int !Text
+instance (Monad m) => P.Stream LocText m Char where
+  uncons (LocText loc text) = return (fmap (fmap (LocText (loc+1))) (Text.uncons text))
+  {-# INLINE uncons #-}
+
+type LispyParser = P.Parsec LocText ASTIdx
+
+parseComment :: LispyParser ()
+parseComment = (P.char ';' >> P.skipMany (P.noneOf "\n\r")) P.<?> "comment"
+
+parseWhitespaceAndComments :: LispyParser ()
+parseWhitespaceAndComments =
+  P.skipMany (P.skipMany1 P.space <|> parseComment)
+
+schemeIdentifierChar :: LispyParser Char
+schemeIdentifierChar = P.satisfy (\c ->
+    {-Attoparsec has inClass-}
+    Set.member c (Set.fromList "-!$%&*+.\\/:<=>?@^_~")
+    || Char.isAlphaNum c
+  )
+
+parseNaturalNumber :: LispyParser Int
+parseNaturalNumber = go 0
+  where
+    go n = do
+      d <- P.digit
+      let n' = n * 10 + (Char.digitToInt d)
+      P.option n' (go n')
+
+parseNumber :: LispyParser LispyNum
+parseNumber =
+  fmap negate (P.char '-' >> parseNaturalNumber)
+  <|> parseNaturalNumber
+
+parserNextASTIdx :: LispyParser ASTIdx
+parserNextASTIdx = do
+  idx <- P.getState
+  P.putState (idx + 1)
+  return idx
+
+parseAtom :: LispyParser AST
+parseAtom =
+  P.choice (List.map P.try
+  [ do
+      num <- parseNumber P.<?> "number"
+      idx <- parserNextASTIdx
+      return (ASTNumber idx num)
+  , do
+      ident <- (P.many1 schemeIdentifierChar) P.<?> "identifier"
+      idx <- parserNextASTIdx
+      return (ASTIdentifier idx (Text.pack ident))
+  ])
+{-
+  [ fmap (\rat -> Number (LispyNum rat True)) rational
+  , fmap (\str -> Ident str) $ many1 schemeIdentifierChar
+  , fmap (const Void) $ string "#void"
+  , fmap (const (Boolean True)) $ string "#true"
+  , fmap (const (Boolean False)) $ string "#false"
+  , fmap (const UnboundVariable) $ string "#unbound-variable"
+  -- warn/fail if it's not a known builtin function?
+  , fmap (\str -> BuiltinFunction str) $ P.char '#' >> many1 schemeIdentifierChar
+  ]-}
+
+parseList :: LispyParser AST
+parseList = do
+  _ <- P.char '('
+  idx <- parserNextASTIdx
+  asts <- P.many parseSexp
+  _ <- P.char ')'
+  return (ASTList idx (Vector.fromList asts))
+
+parseSexp :: LispyParser (Located AST)
+parseSexp = P.between parseWhitespaceAndComments parseWhitespaceAndComments
+  (parseWithLocation (parseAtom <|> parseList) P.<?> "s-expression")
+
+parseWithLocation :: LispyParser a -> LispyParser (Located a)
+parseWithLocation parser = do
+  beginLoc <- P.getPosition
+  LocText beginCharIdx beginText <- P.getInput
+  
+  parsed <- parser
+  
+  endLoc <- P.getPosition
+  LocText endCharIdx _ <- P.getInput
+  let info = SourceLocInfo
+        (Text.take (endCharIdx - beginCharIdx) beginText)
+        beginLoc
+        endLoc
+  
+  return (L info parsed)
+
+parseLispyProgram :: LispyParser (Located AST)
+parseLispyProgram = do
+  idx <- parserNextASTIdx
+  fmap (fmap (ASTList idx . Vector.fromList))
+    (parseWithLocation (P.many parseSexp))
+
+doParse :: LispyParser a -> P.SourceName -> Text -> Either P.ParseError a
+doParse parser sourceName text = let
+    fullParser = do
+      result <- parser
+      P.eof
+      return result
+  in
+  P.runParser fullParser 0 sourceName (LocText 0 text)
+
+
+
+
+
+
+
+---------------------- SHOWING ----------------------
+
+instance (Show a) => Show (Located a) where
+  showsPrec prec (L _ val) = showsPrec prec val
+  
+instance Show AST where
+  showsPrec _ (ASTNumber _ num) = shows num
+  showsPrec _ (ASTIdentifier _ ident) = showString (Text.unpack ident)
+  showsPrec _ (ASTList _ members) =
+    if Vector.null members
+    then showString "()"
+    else
+    showChar '(' .
+    Vector.foldr1
+      (\s rest -> s . showChar ' ' . rest)
+      (fmap (shows . unL) members) .
+    showChar ')'
+
+instance Show CompiledProgram where
+  showsPrec _ (CompiledProgram bytecode (L progSource _) astsByIdx) =
+    showString (Text.unpack (sourceText progSource)) .
+    showChar '\n' .
+    appEndo (foldMap
+      (\(bytecodeIdx, (astidx, instr)) -> Endo (
+        let
+          motherInstructionDesc = showsVarIdx astsByIdx astidx
+          bytecodeIdxDesc = shows bytecodeIdx
+        in
+        showString (List.replicate
+          (max 0 (3 - List.length (bytecodeIdxDesc ""))) ' ') .
+        shows bytecodeIdx .
+        showString "  " .
+        motherInstructionDesc .
+        showString (List.replicate
+          (max 1 (22 - List.length (motherInstructionDesc ""))) ' ') .
+        showsBytecodeInstruction astsByIdx bytecodeIdx instr . showChar '\n'
+      ))
+      (Vector.indexed bytecode))
+
+showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
+showsVarIdx astsByIdx idx =
+  shows idx .
+  showChar '(' . 
+  ( if idx < 0
+    then showString "arg " . shows (-idx)
+    else case astsByIdx Vector.! idx of
+      L source ast ->showsASTConciseSummary ast .
+        showChar ':' . shows (P.sourceLine (sourceBegin source)) .
+        showChar ':' . shows (P.sourceColumn (sourceBegin source))
+  ) .
+  showChar ')'
+
+showsASTConciseSummary :: AST -> ShowS
+showsASTConciseSummary ast = case ast of
+  ASTNumber _ num -> shows num
+  ASTIdentifier _ ident -> showString (Text.unpack ident)
+  ASTList _ members -> case Vector.headM members of
+    Just (L _ ast') -> showChar '(' . showsASTConciseSummary ast' .
+      if Vector.length members > 1 then showString "…)" else showChar ')'
+    Nothing -> showString "()"
+
+showsBytecodeInstruction :: Vector (Located AST) -> Int -> BytecodeInstruction -> ShowS
+showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
+    var = showsVarIdx astsByIdx
+    relDest dest = showChar '+' . shows dest . showChar '(' .
+      shows (bytecodeIdx + 1 + dest) . showChar ')'
+  in case bytecode of
+  CALL result func args ->
+    showString "CALL " .
+    var result .
+    showString " = " . var func .
+    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
+  TAILCALL func args ->
+    showString "TAILCALL " .
+    var func .
+    appEndo (foldMap (\idx -> Endo (showChar ' ' . var idx)) args)
+  LITERAL result value ->
+    showString "LITERAL " .
+    var result .
+    showString " = " .
+    shows value
+  NAME result origName ->
+    showString "NAME " .
+    var result .
+    showString " = " .
+    var origName
+  RETURN origName ->
+    showString "RETURN " .
+    var origName
+  MAKE_CLOSURE result vars dest ->
+    showString "MAKE_CLOSURE " .
+    var result .
+    showString " =" .
+    ( if Set.null vars
+      then id
+      else
+      showString " [" .
+      List.foldr1
+        (\s rest -> s . showChar ' ' . rest)
+        (fmap var (Set.toList vars)) .
+      showChar ']'
+    ) .
+    showChar ' ' .
+    relDest dest
+  GOTO dest ->
+    showString "GOTO " . relDest dest
+  GOTO_IF_NOT dest cond ->
+    showString "GOTO_IF_NOT " . relDest dest .
+    showChar ' ' .
+    var cond
+
+{-
+showsProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> ShowS
+showsProgramBytecode = appEndo . foldMap
+  (\(_, instr) -> Endo (shows instr . showChar '\n'))
+showProgramBytecode :: Vector (ASTIdx, BytecodeInstruction) -> String
+showProgramBytecode = flip showsProgramBytecode ""
+-}
+
+
+showsStackFrame :: Vector (Located AST) -> LispyStackFrame -> ShowS
+showsStackFrame astsByIdx (LispyStackFrame instructionPointer computedValues) =
+  showString "Instruction pointer: " .
+  shows instructionPointer .
+  appEndo (foldMap (\(idx, val) -> Endo (
+    showString "\n\t" .
+    showsVarIdx astsByIdx idx . showString " = " . shows val
+    )) (Map.toList computedValues)) .
+  showChar '\n'
+
+showsStack :: Vector (Located AST) -> LispyStack -> ShowS
+showsStack astsByIdx (LispyStack frame parent) =
+  showsStackFrame astsByIdx frame .
+  case parent of
+    Just (retValDest, nextStack) ->
+      showString "returning value to " .
+      showsVarIdx astsByIdx retValDest .
+      showChar '\n' .
+      showsStack astsByIdx nextStack
+    Nothing -> id
+
+showsStateStack :: LispyState -> ShowS
+showsStateStack (LispyState program stack _ _) =
+  showsStack (programASTsByIdx program) stack
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
