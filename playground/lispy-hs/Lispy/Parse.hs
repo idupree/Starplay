@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveFunctor, DeriveDataTypeable, MultiParamTypeClasses,
   ViewPatterns, OverloadedStrings, FlexibleInstances #-}
 
+-- | This module parses S-expressions.  Just about the only semantic
+-- interpretation it does is turning literal numbers into numeric
+-- values.
 module Lispy.Parse (parseSexp, parseLispyProgram, doParse) where
 
 import qualified Data.Char as Char

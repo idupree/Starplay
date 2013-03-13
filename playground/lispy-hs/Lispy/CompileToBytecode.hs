@@ -63,6 +63,11 @@ compile builtins ast = let
 --
 -- A diff list that carried its length as an int
 -- would probably have a much better constant factor speed wise.
+-- Diff lists are also trivial to make in any language that
+-- has lambdas, whereas Seq is a purely functional data structure
+-- that is not as widely implemented.
+-- (Alternatively, an imperative implementation could adapt this
+-- code to an imperative style.)
 compile' :: CompileScope -> Located AST -> Seq (ASTIdx, BytecodeInstruction)
 compile' scope (L _ ast) = let
   instr i = Seq.singleton (astIdx ast, i)
