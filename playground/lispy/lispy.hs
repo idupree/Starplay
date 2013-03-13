@@ -233,19 +233,20 @@ compile' scope (L _ ast) = let
           "syntax error: 'letrec' must match (letrec ((var expr)...) result)"
         in case args of
         [L _ (ASTList _ bindings), result] -> let
-          parseBinding :: Located AST -> (Text, Located AST)
+          parseBinding :: Located AST -> (VarIdx, Text, Located AST)
           parseBinding (L _ (ASTList _
-            (Vector.toList -> [L _ (ASTIdentifier _ varname), expr])))
-            = (varname, expr)
+            (Vector.toList -> [L _ (ASTIdentifier idx varname), expr])))
+            = (idx, varname, expr)
           parseBinding _ = error letrecSyntaxMsg
           parsedBindings = fmap parseBinding bindings
           bindingEnv = Map.fromList (Vector.toList (
-            (fmap (\ (varname, expr) -> (varname, lASTIdx expr)) parsedBindings)))
+            (fmap (\ (idx, varname, _expr) -> (varname, idx)) parsedBindings)))
           resultScope = scope { compileScopeEnv =
             (Map.union bindingEnv (compileScopeEnv scope)) }
-          bindingsCode = foldMap (compile'
-                resultScope{compileScopeIsTailPosition=False}
-            . snd) parsedBindings
+          bindingsCode = foldMap (\(idx, _varname, expr) -> mconcat [
+              compile' resultScope{compileScopeIsTailPosition=False} expr,
+              instr (NAME idx (lASTIdx expr))
+            ]) parsedBindings
           resultCode = compile' resultScope result
           in mconcat [
             bindingsCode,
