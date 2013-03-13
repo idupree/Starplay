@@ -185,6 +185,12 @@ showsMap kf vf m = case Map.toList m of
     appEndo (foldMap (\p -> Endo (showString ", " . showPair p)) ps) .
     showChar '}'
 
+-- How do you serialize a closure?  By its ASTIdx?  And then you can
+-- map that back to the code... by choosing the first one that matches
+-- that?  Sounds good.  Because we don't trust random pointers into
+-- our bytecode, or the compiler is nondeterministic
+-- (well, with this bytecode, that'd be harmless, but I gather Lua's is riskier).
+
 showsRuntimeValue :: LispyState -> RuntimeValue -> ShowS
 showsRuntimeValue _ NilValue = showString "nil"
 showsRuntimeValue _ TrueValue = showString "true"
@@ -197,9 +203,18 @@ showsRuntimeValue s (ImmTableViewValue i) =
   showsMap (showsRuntimeValue s) (showsRuntimeValue s) (mapIteratorGetMap i)
 showsRuntimeValue _ (BuiltinFunctionValue bf) =
   showString (Text.unpack (builtinDataToText Map.! bf))
-showsRuntimeValue state (FunctionValue frame _) =
-  showChar '<' .
-  showsStackFrame state frame .
+showsRuntimeValue state (FunctionValue
+    (LispyStackFrame instructionPointer computedValues) _) =
+  let program = lsCompiledProgram state in
+  showString "<closure: " .
+  shows instructionPointer .
+  let (astidx, _) = (programBytecode program) Vector.! instructionPointer in
+  showString " (" .
+  showsVarIdx (programASTsByIdx program) astidx .
+  showString ") " .
+  showsMap (showsVarIdx (programASTsByIdx program))
+           (showsRuntimeValue state)
+           computedValues .
   showChar '>'
 showsRuntimeValue state (PendingValue pv) =
   case Map.lookup pv (lsPendingValues state) of
