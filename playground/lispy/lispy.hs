@@ -502,6 +502,100 @@ doParse parser sourceName text = let
   P.runParser fullParser 0 sourceName (LocText 0 text)
 
 
+
+type StackFrameComputedValues = Map VarIdx RuntimeValue
+type InstructionPointer = Int
+
+data RuntimeValue
+  = AtomValue AtomicValue
+  -- | The instruction pointer points to the beginning of the
+  -- function, and the computed values are anything in the
+  -- function's closure.
+  | FunctionValue LispyStackFrame
+  deriving (Eq, Ord, Show)
+
+data LispyStackFrame = LispyStackFrame
+  { lsfInstructionPointer :: InstructionPointer
+  , lsfComputedValues :: StackFrameComputedValues
+  }
+  deriving (Eq, Ord, Show)
+
+data LispyStack = LispyStack
+  { lsFrame :: LispyStackFrame
+  , lsParent :: Maybe (VarIdx, LispyStack)
+  }
+
+data LispyState = LispyState
+  { lsCompiledProgram :: CompiledProgram
+  , lsStack :: LispyStack
+  }
+
+singleStep :: LispyState -> LispyState
+singleStep state@(LispyState
+              program@(CompiledProgram bytecode _ _)
+              stack@(LispyStack
+                frame@(LispyStackFrame instructionPointer computedValues)
+                parent)) =
+  let
+    call :: VarIdx -> Vector VarIdx -> (LispyStackFrame -> LispyStack)
+         -> LispyState
+    call func args continuation = let
+      funcVal = computedValues Map.! func
+      argVals = fmap (computedValues Map.!) args
+      argEnv = foldMap (\(idx, val) -> Map.singleton (-idx-1) val)
+                       (Vector.indexed argVals)
+      in case funcVal of
+        FunctionValue initialFrame ->
+          LispyState program (continuation
+            initialFrame{lsfComputedValues =
+              Map.union argEnv (lsfComputedValues initialFrame)})
+        _ -> error "runtime error: calling a non-function"
+
+    updateStackFrame :: LispyStackFrame -> LispyState
+    updateStackFrame newFrame = state{ lsStack = stack{ lsFrame = newFrame } }
+
+    bindValue result value = updateStackFrame frame{
+        lsfComputedValues = Map.insert result value computedValues,
+        lsfInstructionPointer = instructionPointer+1
+      }
+    goto absoluteDest = updateStackFrame frame{
+        lsfInstructionPointer = absoluteDest
+      }
+  in
+  case snd (bytecode Vector.! instructionPointer) of
+    CALL result func args -> call func args (\newFrame ->
+      LispyStack newFrame (Just (result, stack)))
+    TAILCALL func args -> call func args (\newFrame ->
+      LispyStack newFrame parent)
+    LITERAL result value -> bindValue result (AtomValue value)
+    NAME result origName -> bindValue result (computedValues Map.! origName)
+    RETURN origName ->
+      let retVal = (computedValues Map.! origName)
+      in
+      case parent of
+        Nothing -> error ("returning from the main program: "
+                         List.++ show retVal)
+        Just (retValDest, newStack) ->
+          LispyState program
+            newStack{
+              lsFrame = (lsFrame newStack){
+                lsfComputedValues = Map.insert retValDest retVal
+                                    (lsfComputedValues (lsFrame newStack))
+              }
+            }
+    MAKE_CLOSURE result vars dest -> bindValue result
+      (FunctionValue (LispyStackFrame
+        (instructionPointer+1+dest)
+        (Map.intersection computedValues (Map.fromSet (const ()) vars))))
+    GOTO dest -> goto (instructionPointer+1+dest)
+    GOTO_IF_NOT dest cond ->
+      --TODO bool type rather than "zero is false"
+      if (computedValues Map.! cond) == AtomValue 0
+      then goto (instructionPointer+1+dest)
+      else goto (instructionPointer+1)
+
+
+
 {-
 
 
