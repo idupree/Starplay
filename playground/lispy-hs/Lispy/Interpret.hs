@@ -17,6 +17,16 @@ import Lispy.Types
 ------------------- INTERPRETING -------------------
 
 
+varargPairs :: [RuntimeValue] -> Maybe [(RuntimeValue, RuntimeValue)]
+varargPairs (a:b:rest) = fmap ((a, b) :) (varargPairs rest)
+varargPairs [] = Just []
+varargPairs (_:[]) = Nothing
+
+--nothingToNil :: Maybe RuntimeValue -> RuntimeValue
+maybeRuntimeValue :: (a -> RuntimeValue) -> Maybe a -> RuntimeValue
+maybeRuntimeValue _ Nothing = NilValue
+maybeRuntimeValue f (Just a) = f a
+
 -- "pure" as in "no side effects"
 pureBuiltinFunction :: Builtin -> [RuntimeValue] -> RuntimeValue
 pureBuiltinFunction Plus [AtomValue a, AtomValue b] = AtomValue (a + b)
@@ -34,6 +44,34 @@ pureBuiltinFunction NotEqual [a, b] = truthValue (a /= b)
 pureBuiltinFunction And [a, b] = if isTruthy a then b else a
 pureBuiltinFunction Or [a, b] = if isTruthy a then a else b
 pureBuiltinFunction Not [a] = truthValue (not (isTruthy a))
+pureBuiltinFunction TableFromSequence vals =
+    ImmTableValue (Map.fromList (List.zip (fmap AtomValue [0..]) vals))
+pureBuiltinFunction TableFromPairs vals =
+  case varargPairs vals of
+    Nothing -> error "Odd number of arguments to table-from-pairs"
+    Just pairs -> ImmTableValue (Map.fromList pairs)
+pureBuiltinFunction TableSize [ImmTableValue m] = AtomValue (Map.size m)
+pureBuiltinFunction TableViewKey [ImmTableValue m, k] =
+  ImmTableViewValue (createMapIterator k m)
+pureBuiltinFunction TableUnView [ImmTableViewValue i] =
+  ImmTableValue (mapIteratorGetMap i)
+pureBuiltinFunction TableViewMin [ImmTableValue m] =
+  maybeRuntimeValue ImmTableViewValue (mapMinIterator m)
+pureBuiltinFunction TableViewMax [ImmTableValue m] =
+  maybeRuntimeValue ImmTableViewValue (mapMaxIterator m)
+pureBuiltinFunction TableViewNext [ImmTableViewValue i] =
+  maybeRuntimeValue ImmTableViewValue (mapIteratorNext i)
+pureBuiltinFunction TableViewPrev [ImmTableViewValue i] =
+  maybeRuntimeValue ImmTableViewValue (mapIteratorPrev i)
+pureBuiltinFunction TableViewSet [ImmTableViewValue i, v] =
+  ImmTableViewValue (mapIteratorSet i v)
+pureBuiltinFunction TableViewDelete [ImmTableViewValue i] =
+  ImmTableViewValue (mapIteratorDelete i)
+pureBuiltinFunction TableViewGetKey [ImmTableViewValue i] = mapIteratorGetKey i
+pureBuiltinFunction TableViewGetValue [ImmTableViewValue i] =
+  maybeRuntimeValue id (mapIteratorGetValue i)
+pureBuiltinFunction TableViewElemExists [ImmTableViewValue i] =
+  truthValue (mapIteratorExists i)
 pureBuiltinFunction _ _ =
   error "wrong number of arguments to builtin function (or bug non-function builtin)"
 
