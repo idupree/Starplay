@@ -45,6 +45,10 @@ testEval expr result = do
 --main :: IO ()
 --main = print (P.parseOnly parseLispy "abc (d  e 34) (())")
 
+repn :: Int -> (a -> a) -> a -> a
+repn 0 f a = a
+repn n f a = repn (n-1) f (f a)
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -59,6 +63,8 @@ main = do
   let compiled = case parsed of Right ast -> compile ast
   print parsed
   print compiled
+  putStr (showsStateStack (repn 7 singleStep (startProgram compiled)) "")
+  putStr (showsStateStack (repn 30 singleStep (startProgram compiled)) "")
   --putStr (showProgramBytecode (programBytecode compiled))
 
 
@@ -520,15 +526,45 @@ data LispyStackFrame = LispyStackFrame
   }
   deriving (Eq, Ord, Show)
 
+showsStackFrame :: Vector (Located AST) -> LispyStackFrame -> ShowS
+showsStackFrame astsByIdx (LispyStackFrame instructionPointer computedValues) =
+  showString "Instruction pointer: " .
+  shows instructionPointer .
+  appEndo (foldMap (\(idx, val) -> Endo (
+    showString "\n\t" .
+    showsVarIdx astsByIdx idx . showString " = " . shows val
+    )) (Map.toList computedValues)) .
+  showChar '\n'
+
 data LispyStack = LispyStack
   { lsFrame :: LispyStackFrame
   , lsParent :: Maybe (VarIdx, LispyStack)
   }
+  deriving (Eq, Ord, Show)
+
+showsStack :: Vector (Located AST) -> LispyStack -> ShowS
+showsStack astsByIdx (LispyStack frame parent) =
+  showsStackFrame astsByIdx frame .
+  case parent of
+    Just (retValDest, nextStack) ->
+      showString "returning value to " .
+      showsVarIdx astsByIdx retValDest .
+      showChar '\n' .
+      showsStack astsByIdx nextStack
+    Nothing -> id
+
+showsStateStack :: LispyState -> ShowS
+showsStateStack (LispyState program stack) =
+  showsStack (programASTsByIdx program) stack
 
 data LispyState = LispyState
   { lsCompiledProgram :: CompiledProgram
   , lsStack :: LispyStack
   }
+
+startProgram :: CompiledProgram -> LispyState
+startProgram program = LispyState program
+  (LispyStack (LispyStackFrame 0 mempty) Nothing)
 
 singleStep :: LispyState -> LispyState
 singleStep state@(LispyState
