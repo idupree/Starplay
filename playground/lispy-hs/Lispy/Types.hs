@@ -153,6 +153,10 @@ builtinVarIdxToData :: Map VarIdx Builtin
 builtinVarIdxToData = Map.fromList builtinVarIdxs
 builtinDataToVarIdx :: Map Builtin VarIdx
 builtinDataToVarIdx = Map.fromList (fmap (\(x,y)->(y,x)) builtinVarIdxs)
+builtinTextToData :: Map Text Builtin
+builtinTextToData = Map.fromList builtinNames
+builtinDataToText :: Map Builtin Text
+builtinDataToText = Map.fromList (fmap (\(x,y)->(y,x)) builtinNames)
 builtinTextToVarIdx :: Map Text VarIdx
 builtinTextToVarIdx = fmap (builtinDataToVarIdx Map.!) (Map.fromList builtinNames)
 builtinVarIdxToText :: Map VarIdx Text

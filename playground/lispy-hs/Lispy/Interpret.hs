@@ -13,6 +13,7 @@ import Data.Monoid
 --import Control.Applicative
 
 import Lispy.Types
+import Lispy.Show (showRuntimeValue)
 
 ------------------- INTERPRETING -------------------
 
@@ -208,6 +209,6 @@ ret :: RuntimeValue -> LispyState -> LispyState
 ret retVal state =
   case lsParent (lsStack state) of
     Nothing -> error ("returning from the main program: "
-                     List.++ show retVal)
+      List.++ showRuntimeValue state retVal)
     Just (retValDest, newStack) ->
       bindValue retValDest retVal (state{lsStack = newStack})

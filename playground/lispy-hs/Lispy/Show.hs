@@ -172,3 +172,40 @@ showsStateStack (LispyState program stack _ _) =
 showStateStack :: LispyState -> String
 showStateStack ls = showsStateStack ls ""
 
+
+showsMap :: (k -> ShowS) -> (v -> ShowS) -> Map k v -> ShowS
+showsMap kf vf m = case Map.toList m of
+  [] -> showString "{}"
+  (p1:ps) -> let showPair (k, v) = kf k . showString ": " . vf v in
+    showChar '{' .
+    showPair p1 .
+    appEndo (foldMap (\p -> Endo (showString ", " . showPair p)) ps) .
+    showChar '}'
+
+showsRuntimeValue :: LispyState -> RuntimeValue -> ShowS
+showsRuntimeValue _ NilValue = showString "nil"
+showsRuntimeValue _ TrueValue = showString "true"
+showsRuntimeValue _ (AtomValue n) = shows n
+showsRuntimeValue s (ImmTableValue m) =
+  showsMap (showsRuntimeValue s) (showsRuntimeValue s) m
+showsRuntimeValue s (ImmTableViewValue i) =
+  showsRuntimeValue s (mapIteratorGetKey i) .
+  showChar '@' .
+  showsMap (showsRuntimeValue s) (showsRuntimeValue s) (mapIteratorGetMap i)
+showsRuntimeValue _ (BuiltinFunctionValue bf) =
+  showString (Text.unpack (builtinDataToText Map.! bf))
+showsRuntimeValue state (FunctionValue frame _) =
+  showChar '<' .
+  showsStackFrame (lsCompiledProgram state) frame .
+  showChar '>'
+showsRuntimeValue state (PendingValue pv) =
+  case Map.lookup pv (lsPendingValues state) of
+    Nothing -> showString "<pending " . shows pv . showChar '>'
+    Just v -> showsRuntimeValue state v .
+              showString " via pending " .
+              shows pv
+
+showRuntimeValue :: LispyState -> RuntimeValue -> String
+showRuntimeValue p v = showsRuntimeValue p v ""
+
+
