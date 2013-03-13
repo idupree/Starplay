@@ -13,6 +13,7 @@
        (lambda (x) (f (lambda (v) ((x x) v)))))))
    (fac (lambda (rec) (lambda (x) (if (= x 0) 1 (* x (rec (- x 1)))))))
    (notfact (lambda (rec) (lambda (x) (* x 3))))
+   (notfact2 (I notfact))
    ;(notfactorial2 (Y notfact))
    ;(factorial2 (Y fac))
    ;(f (lambda (x) (if (= x 4) 1 (* x (- x 1)))))
