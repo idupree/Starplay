@@ -305,6 +305,9 @@ type StackFrameComputedValues = Map VarIdx RuntimeValue
 type InstructionPointer = Int
 type PendingValueIdx = Int
 
+-- Every builtin function must have worst-case running time
+-- that is very short.  Constant or log(n) time are generally
+-- acceptable.
 data BuiltinFunction = Plus | Minus | Times | Negate
   | LessThan | LessEqual | GreaterThan | GreaterEqual
   | Equal | NotEqual | And | Or | Not
