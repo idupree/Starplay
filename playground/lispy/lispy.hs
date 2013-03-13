@@ -49,6 +49,14 @@ repn :: Int -> (a -> a) -> a -> a
 repn 0 f a = a
 repn n f a = repn (n-1) f (f a)
 
+run :: Int -> LispyState -> IO ()
+run n state | n > 300 = return ()
+  | otherwise = do
+  putStr "\n\n\n"
+  putStr (showsStateStack state "")
+  run (n+1) (singleStep state)
+
+
 main :: IO ()
 main = do
   args <- getArgs
@@ -65,8 +73,11 @@ main = do
                     compile builtinFunctionTextToVarIdx ast
   print parsed
   print compiled
-  putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
-  putStr (showsStateStack (repn 300 singleStep (startProgram compiled)) "")
+
+  run 0 (startProgram compiled)
+
+  --putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
+  --putStr (showsStateStack (repn 300 singleStep (startProgram compiled)) "")
   --putStr (showProgramBytecode (programBytecode compiled))
 
 
