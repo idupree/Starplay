@@ -43,7 +43,9 @@ testEval expr result = do
 
 main :: IO ()
 main = let
-  parsed = doParseLispyProgram "test str" "abc (d  e 34) (())"
+  parsed = doParseLispyProgram "test str"
+    --"abc (d  e 34) (())"
+    "3 1 2"
   compiled = case parsed of Right ast -> compile ast
   in do
   print parsed
