@@ -23,6 +23,7 @@ import Data.Set as Set
 import Data.Foldable as Foldable
 import Data.Monoid
 import Data.Sequence as Seq
+--import Data.Maybe
 --import Data.Generics.Uniplate.Data
 --import Data.Data
 --import Data.Attoparsec.Text as P
@@ -434,6 +435,7 @@ singleStep state@(LispyState
 
     call :: Maybe VarIdx -> VarIdx -> Vector VarIdx -> LispyState -> LispyState
     call resultElseTail func args stat = let
+      computedValues = (lsfComputedValues (lsFrame (lsStack stat)))
       funcVal = computedValues Map.! func
       argVals = fmap (computedValues Map.!) args
       argEnv = foldMap (\(idx, val) -> Map.singleton (-idx-1) val)
@@ -456,6 +458,7 @@ singleStep state@(LispyState
     callBuiltinFunction :: Maybe VarIdx -> BuiltinFunction -> Vector VarIdx -> LispyState -> LispyState
     callBuiltinFunction resultElseTail bf args stat = case bf of
       _ -> let
+        computedValues = (lsfComputedValues (lsFrame (lsStack stat)))
         val = pureBuiltinFunction bf
           (Vector.toList (fmap (dePendValue . (computedValues Map.!)) args))
         in case resultElseTail of
@@ -470,9 +473,13 @@ singleStep state@(LispyState
       stac{ lsFrame = f (lsFrame stac) } }
 
     bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
-    bindValue result value stat = case
+    bindValue result value stat = let
+      frame = lsFrame (lsStack stat)
+      computedValues = lsfComputedValues frame
+      instructionPointer = lsfInstructionPointer frame
+      in case
         Map.insertLookupWithKey (\_ newValue _ -> newValue)
-          result value (lsfComputedValues (lsFrame (lsStack stat))) of
+          result value computedValues of
       (oldVal, newComputedValues) -> let
         newState = updateStackFrame (\fr -> fr{
             lsfComputedValues = newComputedValues,
