@@ -48,7 +48,7 @@
   )
   (foldl + 0
     (map (lambda (x) (+ 10 x))
-      (table-from-seq
+      (table-sequence
         (f 4)
         (f2 4)
         ((curried+ 3) 4)
