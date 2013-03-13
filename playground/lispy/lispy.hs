@@ -66,7 +66,7 @@ main = do
   print parsed
   print compiled
   putStr (showsStateStack (repn 12 singleStep (startProgram compiled)) "")
-  putStr (showsStateStack (repn 3000 singleStep (startProgram compiled)) "")
+  putStr (showsStateStack (repn 300 singleStep (startProgram compiled)) "")
   --putStr (showProgramBytecode (programBytecode compiled))
 
 
@@ -459,14 +459,14 @@ singleStep state@(LispyState
       stac{ lsFrame = f (lsFrame stac) } }
 
     bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
-    bindValue result value st = case
+    bindValue result value stat = case
         Map.insertLookupWithKey (\_ newValue _ -> newValue)
-          result value computedValues of
+          result value (lsfComputedValues (lsFrame (lsStack stat))) of
       (oldVal, newComputedValues) -> let
         newState = updateStackFrame (\fr -> fr{
             lsfComputedValues = newComputedValues,
             lsfInstructionPointer = instructionPointer+1
-          }) st
+          }) stat
         in case oldVal of
           Just (PendingValue pendingValueIdx) ->
             newState{
