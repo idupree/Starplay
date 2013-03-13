@@ -340,6 +340,10 @@ builtinFunctionDataToVarIdx = Map.fromList
 builtinFunctionTextToVarIdx :: Map Text VarIdx
 builtinFunctionTextToVarIdx = fmap (builtinFunctionDataToVarIdx Map.!)
                                 (Map.fromList builtinFunctionNames)
+builtinFunctionVarIdxToText :: Map VarIdx Text
+builtinFunctionVarIdxToText =
+  Map.fromList (fmap (\(x,y)->(y,x))
+    (Map.toList builtinFunctionTextToVarIdx))
 
 
 toIntBool :: Bool -> Int
@@ -715,12 +719,15 @@ showsVarIdx :: Vector (Located AST) -> VarIdx -> ShowS
 showsVarIdx astsByIdx idx =
   shows idx .
   showChar '(' .
-  ( if idx < 0
-    then showString "arg " . shows (-idx)
-    else case astsByIdx Vector.! idx of
-      L source ast ->showsASTConciseSummary ast .
-        showChar ':' . shows (P.sourceLine (sourceBegin source)) .
-        showChar ':' . shows (P.sourceColumn (sourceBegin source))
+  ( case Map.lookup idx builtinFunctionVarIdxToText of
+      Just builtinName ->
+        showString "builtin " .
+        showString (Text.unpack builtinName)
+      Nothing ->
+        case astsByIdx Vector.! idx of
+          L source ast ->showsASTConciseSummary ast .
+            showChar ':' . shows (P.sourceLine (sourceBegin source)) .
+            showChar ':' . shows (P.sourceColumn (sourceBegin source))
   ) .
   showChar ')'
 
