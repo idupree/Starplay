@@ -513,6 +513,7 @@ doParse parser sourceName text = let
 
 type StackFrameComputedValues = Map VarIdx RuntimeValue
 type InstructionPointer = Int
+type PendingValueIdx = Int
 
 data RuntimeValue
   = AtomValue AtomicValue
@@ -520,6 +521,18 @@ data RuntimeValue
   -- function, and the computed values are anything in the
   -- function's closure.
   | FunctionValue LispyStackFrame
+  -- | This is created when a closure in a letrec
+  -- closes over a value that has not yet finished being
+  -- defined/evaluated.
+  -- TODO investigate compiling letrecs to a clever use
+  -- of the Y combinator instead (requiring no runtime
+  -- support, but making recursive references be values
+  -- with different identities than the function they refer to).
+  -- I think I'd use Tarjan's SCC-finding algorithm.
+  -- For mutual recursion, I think I'd pass to the Y combinator
+  -- a function that takes an int parameter "which function are we
+  -- recursing to".
+  | PendingValue PendingValueIdx
   deriving (Eq, Ord, Show)
 
 data LispyStackFrame = LispyStackFrame
@@ -556,25 +569,41 @@ showsStack astsByIdx (LispyStack frame parent) =
     Nothing -> id
 
 showsStateStack :: LispyState -> ShowS
-showsStateStack (LispyState program stack) =
+showsStateStack (LispyState program stack _ _) =
   showsStack (programASTsByIdx program) stack
 
 data LispyState = LispyState
   { lsCompiledProgram :: CompiledProgram
   , lsStack :: LispyStack
+  -- | Values are never removed from this map (unless we prove
+  -- that there is no longer a PendingValue value with that index
+  -- sitting around anywhere).
+  , lsPendingValues :: Map PendingValueIdx RuntimeValue
+  , lsNextPendingValueIdx :: PendingValueIdx
   }
 
 startProgram :: CompiledProgram -> LispyState
-startProgram program = LispyState program
+startProgram program = LispyState
+  program
   (LispyStack (LispyStackFrame 0 mempty) Nothing)
+  mempty
+  0
 
 singleStep :: LispyState -> LispyState
 singleStep state@(LispyState
               program@(CompiledProgram bytecode _ _)
               stack@(LispyStack
                 frame@(LispyStackFrame instructionPointer computedValues)
-                parent)) =
+                parent)
+              pendingValues
+              nextPendingValueIdx) =
   let
+    dePendValue :: RuntimeValue -> RuntimeValue
+    dePendValue (PendingValue idx) = case Map.lookup idx pendingValues of
+      Nothing -> error "Used a value in a letrec before it was defined"
+      Just val -> dePendValue val
+    dePendValue val = val
+
     call :: VarIdx -> Vector VarIdx -> (LispyStackFrame -> LispyStack)
          -> LispyState
     call func args continuation = let
@@ -582,31 +611,47 @@ singleStep state@(LispyState
       argVals = fmap (computedValues Map.!) args
       argEnv = foldMap (\(idx, val) -> Map.singleton (-idx-1) val)
                        (Vector.indexed argVals)
-      in case funcVal of
+      in case dePendValue funcVal of
         FunctionValue initialFrame ->
-          LispyState program (continuation
-            initialFrame{lsfComputedValues =
-              Map.union argEnv (lsfComputedValues initialFrame)})
+          state {
+            lsStack = (continuation
+              initialFrame{lsfComputedValues =
+                Map.union argEnv (lsfComputedValues initialFrame)})
+            }
         _ -> error "runtime error: calling a non-function"
 
-    updateStackFrame :: LispyStackFrame -> LispyState
-    updateStackFrame newFrame = state{ lsStack = stack{ lsFrame = newFrame } }
+    updateStackFrame :: (LispyStackFrame -> LispyStackFrame)
+                     -> LispyState -> LispyState
+    updateStackFrame f stat = stat{ lsStack = let stac = lsStack stat in
+      stac{ lsFrame = f (lsFrame stac) } }
 
-    bindValue result value = updateStackFrame frame{
-        lsfComputedValues = Map.insert result value computedValues,
-        lsfInstructionPointer = instructionPointer+1
-      }
-    goto absoluteDest = updateStackFrame frame{
+    bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
+    bindValue result value st = case
+        Map.insertLookupWithKey (\_ newValue _ -> newValue)
+          result value computedValues of
+      (oldVal, newComputedValues) -> let
+        newState = updateStackFrame (\fr -> fr{
+            lsfComputedValues = newComputedValues,
+            lsfInstructionPointer = instructionPointer+1
+          }) st
+        in case oldVal of
+          Just (PendingValue pendingValueIdx) ->
+            newState{
+              lsPendingValues = Map.insert pendingValueIdx value pendingValues }
+          _ -> newState
+
+    goto :: InstructionPointer -> LispyState -> LispyState
+    goto absoluteDest st = updateStackFrame (\fr -> fr{
         lsfInstructionPointer = absoluteDest
-      }
+      }) st
   in
   case snd (bytecode Vector.! instructionPointer) of
     CALL result func args -> call func args (\newFrame ->
       LispyStack newFrame (Just (result, stack)))
     TAILCALL func args -> call func args (\newFrame ->
       LispyStack newFrame parent)
-    LITERAL result value -> bindValue result (AtomValue value)
-    NAME result origName -> bindValue result (computedValues Map.! origName)
+    LITERAL result value -> bindValue result (AtomValue value) state
+    NAME result origName -> bindValue result (computedValues Map.! origName) state
     RETURN origName ->
       let retVal = (computedValues Map.! origName)
       in
@@ -614,23 +659,42 @@ singleStep state@(LispyState
         Nothing -> error ("returning from the main program: "
                          List.++ show retVal)
         Just (retValDest, newStack) ->
-          LispyState program
-            newStack{
-              lsFrame = (lsFrame newStack){
-                lsfComputedValues = Map.insert retValDest retVal
-                                    (lsfComputedValues (lsFrame newStack))
+          bindValue retValDest retVal state{lsStack = newStack}
+    MAKE_CLOSURE result vars dest -> case
+      Set.foldl'
+        (\(nextPending, newComputedValues, varsInClosure)
+          varInClosure ->
+           case Map.lookup varInClosure computedValues of
+             Just val -> (nextPending, newComputedValues,
+               Map.insert varInClosure val varsInClosure)
+             Nothing -> let
+               newPending = PendingValue nextPending
+               nextPending' = nextPending+1
+               newComputedValues' = Map.insert varInClosure
+                 newPending newComputedValues
+               in (nextPending', newComputedValues',
+               Map.insert varInClosure newPending varsInClosure))
+        (nextPendingValueIdx, computedValues, mempty)
+        vars
+      of (nextPending, newComputedValues, varsInClosure) -> let
+            value = FunctionValue (LispyStackFrame
+                      (instructionPointer+1+dest) varsInClosure)
+            -- Note: the bindValue happens *after* putting in
+            -- newComputedValues.  This lets bindValue detect
+            -- whether the current closure is pending (self-recursive
+            -- functions) so that it will define it in pendingValues.
+            in bindValue result value
+              (updateStackFrame (\fr ->
+                fr{ lsfComputedValues = newComputedValues }) state
+              ){
+                lsNextPendingValueIdx = nextPending
               }
-            }
-    MAKE_CLOSURE result vars dest -> bindValue result
-      (FunctionValue (LispyStackFrame
-        (instructionPointer+1+dest)
-        (Map.intersection computedValues (Map.fromSet (const ()) vars))))
-    GOTO dest -> goto (instructionPointer+1+dest)
+    GOTO dest -> goto (instructionPointer+1+dest) state
     GOTO_IF_NOT dest cond ->
       --TODO bool type rather than "zero is false"
       if (computedValues Map.! cond) == AtomValue 0
-      then goto (instructionPointer+1+dest)
-      else goto (instructionPointer+1)
+      then goto (instructionPointer+1+dest) state
+      else goto (instructionPointer+1) state
 
 
 
