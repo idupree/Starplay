@@ -159,7 +159,7 @@ showsStack program (LispyStack frame parent) =
   showsStackFrame program frame .
   case parent of
     Just (retValDest, nextStack) ->
-      showString "returning value to " .
+      showString "  will return value to " .
       showsVarIdx (programASTsByIdx program) retValDest .
       showChar '\n' .
       showsStack program nextStack
