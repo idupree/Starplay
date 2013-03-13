@@ -306,10 +306,12 @@ type LispyNum = Int
 type LispyParser = P.Parsec LocText ASTIdx
 
 
+parseComment :: LispyParser ()
+parseComment = (P.char ';' >> P.skipMany (P.noneOf "\n\r")) P.<?> "comment"
+
 parseWhitespaceAndComments :: LispyParser ()
 parseWhitespaceAndComments =
-  P.skipMany (P.skipMany1 P.space <|>
-    (P.char ';' >> P.skipMany (P.noneOf "\n\r")))
+  P.skipMany (P.skipMany1 P.space <|> parseComment)
 
 schemeIdentifierChar :: LispyParser Char
 schemeIdentifierChar = P.satisfy (\c ->
