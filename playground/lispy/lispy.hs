@@ -45,7 +45,7 @@ main :: IO ()
 main = let
   parsed = doParseLispyProgram "test str"
     --"abc (d  e 34) (())"
-    "3 1 2"
+    "(lambda (x y z) (x y (x z)))"
   compiled = case parsed of Right ast -> compile ast
   in do
   print parsed
