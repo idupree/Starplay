@@ -1,5 +1,5 @@
 
-module Lispy (main) where
+module Main (main) where
 
 --import Control.Exception
 --import System.Timeout
