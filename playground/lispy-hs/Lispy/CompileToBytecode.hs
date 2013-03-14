@@ -163,7 +163,7 @@ compile' scope (L _ ast) = let
             bodyCode
             ]
         _ -> error "syntax error: 'lambda' must match (lambda (var...) body)"
-      ASTIdentifier _ "do" -> case List.reverse args of
+      ASTIdentifier _ "begin" -> case List.reverse args of
         [] -> mempty
         (last_ : (List.reverse -> init_)) -> mconcat [
           foldMap (compile' scope{compileScopeIsTailPosition=False}) init_,

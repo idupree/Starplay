@@ -58,9 +58,10 @@
       (table-sequence
         (f 4)
         (f2 4)
-        (if (< nil (> true empty-table)) 3
-          (table-view-get-value (table-view-set (table-view-key empty-table 7) 4))
-        )
+        (begin 993 32767
+          (if (< nil (> true empty-table)) 3
+            (table-view-get-value (table-view-set (table-view-key empty-table 7) 4))
+          ))
         ((curried+ 3) 4)
         (factorial 4)
         (factorial2 4))))
