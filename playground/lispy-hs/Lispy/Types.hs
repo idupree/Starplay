@@ -27,7 +27,7 @@ data BytecodeInstruction
   = CALL { bcResultName :: VarIdx,
                bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
   | TAILCALL { bcFunc :: VarIdx, bcArgs :: Vector VarIdx }
-  | LITERAL { bcResultName :: VarIdx, bcLiteralValue :: AtomicValue }
+  | LITERAL { bcResultName :: VarIdx, bcLiteralValue :: LispyNum }
   | NAME { bcResultName :: VarIdx, bcOriginalName :: VarIdx }
   | RETURN { bcOriginalName :: VarIdx }
   | MAKE_CLOSURE { bcResultName :: VarIdx, bcVarsInClosure :: Set VarIdx,
@@ -37,7 +37,6 @@ data BytecodeInstruction
   --UNTIL
   deriving (Eq, Ord, Show)
 type VarIdx = ASTIdx
-type AtomicValue = LispyNum
 type LispyNum = Int
 
 type ASTIdx = Int
@@ -245,7 +244,7 @@ mapIteratorExists (MapIterator k m) = Map.member k m
 data RuntimeValue
   = NilValue
   | TrueValue
-  | AtomValue !AtomicValue
+  | NumberValue !LispyNum
   -- | Tables, as in Lua, are used for both sequences and maps.
   -- Unlike in Lua, our tables are ordered by key.  They are
   -- balanced binary search trees.  Also unlike in Lua, they

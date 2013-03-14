@@ -30,10 +30,10 @@ maybeRuntimeValue f (Just a) = f a
 
 -- "pure" as in "no side effects"
 pureBuiltinFunction :: Builtin -> [RuntimeValue] -> RuntimeValue
-pureBuiltinFunction Plus [AtomValue a, AtomValue b] = AtomValue (a + b)
-pureBuiltinFunction Minus [AtomValue a, AtomValue b] = AtomValue (a - b)
-pureBuiltinFunction Times [AtomValue a, AtomValue b] = AtomValue (a * b)
-pureBuiltinFunction Negate [AtomValue a] = AtomValue (negate a)
+pureBuiltinFunction Plus [NumberValue a, NumberValue b] = NumberValue (a + b)
+pureBuiltinFunction Minus [NumberValue a, NumberValue b] = NumberValue (a - b)
+pureBuiltinFunction Times [NumberValue a, NumberValue b] = NumberValue (a * b)
+pureBuiltinFunction Negate [NumberValue a] = NumberValue (negate a)
 pureBuiltinFunction LessThan [a, b] = truthValue (a < b)
 pureBuiltinFunction LessEqual [a, b] = truthValue (a <= b)
 pureBuiltinFunction GreaterThan [a, b] = truthValue (a > b)
@@ -46,12 +46,12 @@ pureBuiltinFunction And [a, b] = if isTruthy a then b else a
 pureBuiltinFunction Or [a, b] = if isTruthy a then a else b
 pureBuiltinFunction Not [a] = truthValue (not (isTruthy a))
 pureBuiltinFunction TableFromSequence vals =
-    ImmTableValue (Map.fromList (List.zip (fmap AtomValue [0..]) vals))
+    ImmTableValue (Map.fromList (List.zip (fmap NumberValue [0..]) vals))
 pureBuiltinFunction TableFromPairs vals =
   case varargPairs vals of
     Nothing -> error "Odd number of arguments to table-from-pairs"
     Just pairs -> ImmTableValue (Map.fromList pairs)
-pureBuiltinFunction TableSize [ImmTableValue m] = AtomValue (Map.size m)
+pureBuiltinFunction TableSize [ImmTableValue m] = NumberValue (Map.size m)
 pureBuiltinFunction TableViewKey [ImmTableValue m, k] =
   ImmTableViewValue (createMapIterator k m)
 pureBuiltinFunction TableUnView [ImmTableViewValue i] =
@@ -94,7 +94,7 @@ singleStep state@(LispyState
   case snd (bytecode Vector.! instructionPointer) of
     CALL result func args -> call (Just result) func args state
     TAILCALL func args -> call Nothing func args state
-    LITERAL result value -> bindValue result (AtomValue value) state
+    LITERAL result value -> bindValue result (NumberValue value) state
     NAME result origName -> bindValue result (computedValues Map.! origName) state
     RETURN origName -> ret (computedValues Map.! origName) state
     MAKE_CLOSURE result vars dest params -> case

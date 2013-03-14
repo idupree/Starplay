@@ -193,7 +193,7 @@ showsMap kf vf m = case Map.toList m of
 showsRuntimeValue :: LispyState -> RuntimeValue -> ShowS
 showsRuntimeValue _ NilValue = showString "nil"
 showsRuntimeValue _ TrueValue = showString "true"
-showsRuntimeValue _ (AtomValue n) = shows n
+showsRuntimeValue _ (NumberValue n) = shows n
 showsRuntimeValue s (ImmTableValue m) =
   showsMap (showsRuntimeValue s) (showsRuntimeValue s) m
 showsRuntimeValue s (ImmTableViewValue i) =
