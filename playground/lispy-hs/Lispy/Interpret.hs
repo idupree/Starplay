@@ -51,7 +51,8 @@ pureBuiltinFunction TableFromPairs vals =
   case varargPairs vals of
     Nothing -> error "Odd number of arguments to table-from-pairs"
     Just pairs -> ImmTableValue (Map.fromList pairs)
-pureBuiltinFunction TableSize [ImmTableValue m] = NumberValue (Map.size m)
+pureBuiltinFunction TableSize [ImmTableValue m] =
+  NumberValue (fromIntegral (Map.size m))
 pureBuiltinFunction TableViewKey [ImmTableValue m, k] =
   ImmTableViewValue (createMapIterator k m)
 pureBuiltinFunction TableUnView [ImmTableViewValue i] =

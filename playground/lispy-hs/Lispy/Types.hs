@@ -12,6 +12,7 @@ import Data.Set as Set
 --import Data.Sequence as Seq
 --import Data.Maybe
 --import Control.Applicative
+import Data.Int
 
 import Text.Parsec (SourcePos, sourceLine, sourceColumn)
 
@@ -37,7 +38,12 @@ data BytecodeInstruction
   --UNTIL
   deriving (Eq, Ord, Show)
 type VarIdx = ASTIdx
-type LispyNum = Int
+
+-- Currently we ignore int overflow and just let the numbers twos-complement
+-- wrap.  Luckily, in Haskell, twos-complement sized int types are
+-- modulo rather than C's unspecified behavior on signed overflow:
+-- http://www.haskell.org/ghc/docs/latest/html/libraries/base/Data-Int.html
+type LispyNum = Int64
 
 type ASTIdx = Int
 data SourceLocInfo = SourceLocInfo

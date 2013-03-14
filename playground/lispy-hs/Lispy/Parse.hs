@@ -51,12 +51,12 @@ schemeIdentifierChar = P.satisfy (\c ->
     || Char.isAlphaNum c
   )
 
-parseNaturalNumber :: LispyParser Int
+parseNaturalNumber :: LispyParser LispyNum
 parseNaturalNumber = go 0
   where
     go n = do
       d <- P.digit
-      let n' = n * 10 + (Char.digitToInt d)
+      let n' = n * 10 + fromIntegral (Char.digitToInt d)
       P.option n' (go n')
 
 parseNumber :: LispyParser LispyNum
