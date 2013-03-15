@@ -98,8 +98,8 @@ data Builtin = Plus | Minus | Times | Negate
   -- constants are functions instead
   | Nil | Truth
   | EmptyTable
-  | TableFromSequence -- ^ (table-from-seq a b c) gives table {0:a, 1:b, 2:c}
-  | TableFromPairs -- ^ (table-from-pairs 4 a 2 b 1 c) gives table {1:c, 2:b, 4:a}
+  | TableFromSequence -- ^ (table-sequence a b c) gives table {0:a, 1:b, 2:c}
+  | TableFromPairs -- ^ (table 4 a 2 b 1 c) gives table {1:c, 2:b, 4:a}
   | TableSize -- ^ table -> number
   | TableViewKey -- ^ table, key -> iterator
   | TableUnView -- ^ iterator -> table
