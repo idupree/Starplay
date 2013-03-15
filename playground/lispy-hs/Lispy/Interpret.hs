@@ -1,10 +1,14 @@
+{-# LANGUAGE BangPatterns #-}
 
 module Lispy.Interpret (startProgram, singleStep) where
 
 --import Data.Text as Text
 import Data.List as List
 import Data.Vector as Vector
-import Data.Map.Strict as Map
+--We prefer Data.Map.Strict but it is too new, so we explicitly
+--strictify any values we're inserting (just to make extra sure they
+--don't use time or memory different than we're expecting).
+import Data.Map as Map
 import Data.Set as Set
 --import Data.Foldable as Foldable
 import Data.Monoid
@@ -28,6 +32,10 @@ maybeRuntimeValue :: (a -> RuntimeValue) -> Maybe a -> RuntimeValue
 maybeRuntimeValue _ Nothing = NilValue
 maybeRuntimeValue f (Just a) = f a
 
+-- since Data.Map.Strict is newish
+mapFromListStrict :: (Ord k) => [(k,v)] -> Map k v
+mapFromListStrict = Map.fromList . fmap (\p@(!k,!v)->p)
+
 -- "pure" as in "no side effects"
 pureBuiltinFunction :: Builtin -> [RuntimeValue] -> RuntimeValue
 pureBuiltinFunction Plus [NumberValue a, NumberValue b] = NumberValue (a + b)
@@ -46,11 +54,11 @@ pureBuiltinFunction And [a, b] = if isTruthy a then b else a
 pureBuiltinFunction Or [a, b] = if isTruthy a then a else b
 pureBuiltinFunction Not [a] = truthValue (not (isTruthy a))
 pureBuiltinFunction TableFromSequence vals =
-    ImmTableValue (Map.fromList (List.zip (fmap NumberValue [0..]) vals))
+    ImmTableValue (mapFromListStrict (List.zip (fmap NumberValue [0..]) vals))
 pureBuiltinFunction TableFromPairs vals =
   case varargPairs vals of
     Nothing -> error "Odd number of arguments to table-from-pairs"
-    Just pairs -> ImmTableValue (Map.fromList pairs)
+    Just pairs -> ImmTableValue (mapFromListStrict pairs)
 pureBuiltinFunction TableSize [ImmTableValue m] =
   NumberValue (fromIntegral (Map.size m))
 pureBuiltinFunction TableViewKey [ImmTableValue m, k] =
@@ -103,10 +111,10 @@ singleStep state@(LispyState
         (\(nextPending, newComputedValues, varsInClosure)
           varInClosure ->
            case Map.lookup varInClosure computedValues of
-             Just val -> (nextPending, newComputedValues,
+             Just !val -> (nextPending, newComputedValues,
                Map.insert varInClosure val varsInClosure)
              Nothing -> let
-               newPending = PendingValue nextPending
+               !newPending = PendingValue nextPending
                nextPending' = nextPending+1
                newComputedValues' = Map.insert varInClosure
                  newPending newComputedValues
@@ -149,7 +157,7 @@ call resultElseTail func args state = let
   argVals = fmap (computedValues Map.!) args
   in case dePendValue state funcVal of
     FunctionValue initialFrame params -> let
-        argEnv = Map.fromList (Vector.toList (Vector.zip params argVals))
+        argEnv = mapFromListStrict (Vector.toList (Vector.zip params argVals))
         newStackFrame = initialFrame{lsfComputedValues =
             Map.union argEnv (lsfComputedValues initialFrame)}
       in state{
@@ -181,7 +189,7 @@ updateStackFrame f state = state{ lsStack = let stack = lsStack state in
   stack{ lsFrame = f (lsFrame stack) } }
 
 bindValue :: VarIdx -> RuntimeValue -> LispyState -> LispyState
-bindValue result value state = let
+bindValue result !value state = let
   frame = lsFrame (lsStack state)
   computedValues = lsfComputedValues frame
   instructionPointer = lsfInstructionPointer frame

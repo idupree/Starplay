@@ -1,11 +1,14 @@
-{-# LANGUAGE DeriveFunctor, OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor, OverloadedStrings, BangPatterns #-}
 
 module Lispy.Types (module Lispy.Types, module Text.Parsec) where
 
 import Data.Text as Text
 --import Data.List as List
 import Data.Vector as Vector
-import Data.Map.Strict as Map
+--We prefer Data.Map.Strict but it is too new, so we explicitly
+--strictify any values we're inserting (just to make extra sure they
+--don't use time or memory different than we're expecting).
+import Data.Map as Map
 import Data.Set as Set
 --import Data.Foldable as Foldable
 --import Data.Monoid as Monoid
@@ -231,7 +234,7 @@ mapIteratorPrev (MapIterator k m) =
   fmap (\(k', _) -> MapIterator k' m) (Map.lookupLT k m)
 
 mapIteratorSet :: (Ord k) => MapIterator k v -> v -> MapIterator k v
-mapIteratorSet (MapIterator k m) v =
+mapIteratorSet (MapIterator k m) !v =
   (MapIterator k (Map.insert k v m))
 
 mapIteratorDelete :: (Ord k) => MapIterator k v -> MapIterator k v
