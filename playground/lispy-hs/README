@@ -13,6 +13,8 @@ get these by installing the Haskell Platform then running
 
 > cabal update; cabal install containers; cabal install vector
 
+(I have GHC 7.6.1 as of this writing.)
+
 ===== What it does =====
 
 Evaluates the Lispy expression in the passed file (defaulting to test.scm).
