@@ -382,13 +382,13 @@ class TurtleFnView extends Backbone.View
         ><img alt="turtle" tabindex="0" class="turtle-fn-type"
               src="turtle23x23.png" width="23" height="23"
         /><div
-          ><a href="javascript:;" class="fn-become-turtle"
+          ><a href="javascript:;" class="fn-become-turtle" title="turtle rule"
             ><img alt="be turtle" src="turtle23x23.png" width="23" height="23" /></a
-          ><a href="javascript:;" class="fn-become-patch"
+          ><a href="javascript:;" class="fn-become-patch" title="patch rule"
             ><img alt="be patch" src="patch23x23.png" width="23" height="23" /></a
-          ><a href="javascript:;" class="fn-become-world"
+          ><a href="javascript:;" class="fn-become-world" title="world rule"
             ><img alt="be world" src="world23x23.png" width="23" height="23" /></a
-          ><a href="javascript:;" class="fn-become-init"
+          ><a href="javascript:;" class="fn-become-init" title="initialization rule"
             ><img alt="be init" src="init23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-delete"
             >Delete</a
