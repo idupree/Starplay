@@ -5,7 +5,9 @@
         <title>Starplay</title>
         <link rel="stylesheet" href="playground.css" />
         <script src="underscore-min.js"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script
+          src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"
+        ></script>
         <script src="lispy.js"></script>
         <script src="lispy-tests.js"></script>
         <script>
@@ -25,13 +27,17 @@
               }
               $out.text(out);
             });
-            $code.val("((fn (x) x) 3)\n(+ 3 4)\n45\n\n((fn (x)\n  (if (= (mod x 2) 0)\n      (/ x 2)\n      (+ (* x 3) 1)))\n3)");
+            $code.val(
+"((fn (x) x) 3)\n(+ 3 4)\n45\n\n((fn (x)\n  (if (= (mod x 2) 0)\n      (/ x 2)\n      (+ (* x 3) 1)))\n3)"
+            );
             $code.trigger('change');
             try { lispy.test(); }
             catch(e) { $testresults.text(""+e); }
           });
         </script>
-        <!--[if lte IE 8]><script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+        <!--[if lte IE 8]>
+        <script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
     </head>
     <body>
       <p>hi</p>

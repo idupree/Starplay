@@ -30,7 +30,8 @@ rand = {
   arrayMember: (arr) ->
     arr[rand.intInHalfOpenRange(0, arr.length)]
 
-  # average case O(1) for mostly-okay arrays (worst case O(n) if really unlucky),
+  # average case O(1) for mostly-okay arrays
+  # (worst case O(n) if really unlucky),
   # up to likely O(n) for mostly-not-okay arrays.
   # Returns null if no item meets the predicate. (Or should it throw?)
   okayArrayMember: (arr, predicate) ->
@@ -255,7 +256,8 @@ evalScriptInEnv = (scriptText, env, thisVal) ->
 coffeeeval = (coffeescript, env, thisVal) ->
   # because top-level doesn't make the last line a 'return' in normal coffee
   try
-    readyCoffeeScript = ('return (->\n'+coffeescript).replace(/\n/, '\n ')+'\n).call(this)'
+    readyCoffeeScript = ('return (->\n'+coffeescript).replace(
+                         /\n/, '\n ') + '\n).call(this)'
     js = '"use strict";' + CoffeeScript.compile readyCoffeeScript, bare: true
   catch error
     # Adjust for the extra line I have to put at the beginning of the script.
@@ -274,16 +276,20 @@ lispyeval = (lispyscript, env) ->
       '@': lispy.wrapJSVal (tree, env) =>
         member = this[tree[1].string]
         if _.isFunction member
-          result = member.apply(this, _.map(tree.slice(2), (v)->lispy.evaluate(v).value)) #but jsval vs. regular val!!! Which expects which?
+          result = member.apply(this, _.map(tree.slice(2),
+                                            (v)->lispy.evaluate(v).value))
+                   #but jsval vs. regular val!!! Which expects which?
         else
           if tree.length > 2
             throw "arguments given to a non-function member"
           result = member
-        if _.isObject result #hack to avoid those self-returning methods causing trouble TODO
+        if _.isObject result
+          # hack to avoid those self-returning methods causing trouble TODO
           return lispy.mkvoid()
         else
           return lispy.wrapJSVal result
-        #aha the ??? is becaue this '@' fn value is created every time, per obj.
+        # aha the ??? is because this '@' fn value is created every time,
+        # per obj.
       }, lispy.builtinsAsLispyThings, env))
     #console.log 'heh', lispyvals, lispy.crappyRender(lispyvals)
     if lispyvals.length > 0
@@ -321,8 +327,10 @@ generateWordNotIns = (notInObjs) ->
       (word) -> _.all notInObjs, (obj) -> not _.has obj, word
 
 # This has a name (identifier-style(?) string),
-# implementation (CoffeeScript text evaluating to a value, possibly of function type),
-# and activation (CoffeeScript text evaluating to a function returning boolean, or nothing)
+# implementation (CoffeeScript text evaluating to a value,
+#                   possibly of function type),
+# and activation (CoffeeScript text evaluating to a
+#                   function returning boolean, or nothing)
 class TurtleFn extends Backbone.Model
   setIfNot: (props, setOptions) ->
     for key, val of props
@@ -344,7 +352,8 @@ class TurtleFn extends Backbone.Model
       implementation: -> '-> '
       activation: -> '-> true'
       error: -> null
-    @on 'change:type change:isInit change:name change:implementation change:activation', @updateSimCode, @
+    @on('change:type change:isInit change:name change:implementation change:activation',
+        @updateSimCode, @)
     @updateSimCode()
   updateSimCode: ->
     delete sim.fn[@previous 'type'][@previous 'name']
@@ -370,7 +379,8 @@ class TurtleFnView extends Backbone.View
   $domTemplate: $ """
     <li
       ><div class="turtle-fn-menu"
-        ><img alt="turtle" tabindex="0" class="turtle-fn-type" src="turtle23x23.png" width="23" height="23"
+        ><img alt="turtle" tabindex="0" class="turtle-fn-type"
+              src="turtle23x23.png" width="23" height="23"
         /><div
           ><a href="javascript:;" class="fn-become-turtle"
             ><img alt="be turtle" src="turtle23x23.png" width="23" height="23" /></a
@@ -393,7 +403,8 @@ class TurtleFnView extends Backbone.View
   events:
     'focus div.turtle-fn-menu *': -> @$('.turtle-fn-menu').addClass 'menuOpen'
     'blur div.turtle-fn-menu *': -> @$('.turtle-fn-menu').removeClass 'menuOpen'
-    #'click .turtle-fn-delete': 'remove' #??maybe? perhaps deleting the name (or impl?) & it asks if you want to delete.
+    #'click .turtle-fn-delete': 'remove' #??maybe? perhaps deleting the name
+    #  (or impl?) & it asks if you want to delete.
     'blur .turtle-fn-name': 'rename'
     'blur .turtle-fn-implementation': 'recompile'
     'blur .turtle-fn-activation': 'reactivate'
@@ -409,7 +420,8 @@ class TurtleFnView extends Backbone.View
     #@model.on 'destroy',
   #no consistency/compilability checking yet
   #red background? ability to reset to previous? undoes?
-  #possibly check that it compiles? also doesn't throw exceptions?? lintz? in real time while typing?
+  #possibly check that it compiles? also doesn't throw exceptions??
+  #lint? in real time while typing?
   rename: -> @model.set 'name', @$('.turtle-fn-name').text()
   recompile: -> @model.set 'implementation', @$('.turtle-fn-implementation').text()
   reactivate: -> @model.set 'activation', @$('.turtle-fn-activation').text()
@@ -429,7 +441,8 @@ class TurtleFnView extends Backbone.View
     
   #later worry about codemirror
 
-# cf http://www.chris-granger.com/2012/02/26/connecting-to-your-creation/ which i saw a few days after starting this project
+# cf http://www.chris-granger.com/2012/02/26/connecting-to-your-creation/
+# which i saw a few days after starting this project
 
 # name text turns red while it's the same as another? and has a popup or?'
 
@@ -457,15 +470,22 @@ $ ->
     $('#turtleFns').append new TurtleFnView(model: model).el
 
   newFn = (type, name, implementation, activation, isInit = false) ->
-    thisPageTurtleFnList.create type: type, name: name, implementation: implementation, activation: activation, isInit: isInit
+    thisPageTurtleFnList.create
+      type: type
+      name: name
+      implementation: implementation
+      activation: activation
+      isInit: isInit
   newFn 'turtle', 'speed', '(@ forward (- 5 4))', '(= (@ type) "bullet")'
-  newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'", "-> @type == 'crazy' and sim.time % 8 == 0"
+  newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'",
+                                 "-> @type == 'crazy' and sim.time % 8 == 0"
   newFn 'turtle', 'wobble', """
     ->
       @rotateLeft tau / 16 * (Math.random() - 0.5)
       @forward 0.25""",
     """-> @type == 'crazy'"""
-  #newFn 'turtle', 'patchHere', "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
+  #newFn 'turtle', 'patchHere',
+  #         "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
   newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
   
   newFn 'patch', 'decayGrass', "-> @grass *= 0.99", "-> true"
@@ -482,7 +502,8 @@ $ ->
         {color: patchcolor, grass:0}
     """, '-> true', true
   
-  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click -> thisPageTurtleFnList.create()
+  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click(
+                                             -> thisPageTurtleFnList.create())
   window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
   runInitScript()
   startRunning()

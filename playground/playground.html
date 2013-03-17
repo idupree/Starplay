@@ -4,21 +4,27 @@
         <meta charset="utf-8" />
         <title>Starplay</title>
         <link rel="stylesheet" href="playground.css" />
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script
+          src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"
+        ></script>
         <script>
             "use strict";
             window.StarPlay = {};
-            window.StarPlay.wordsAjaxRequest = $.getJSON('words-int.json', function(data) { window.StarPlay.words = data; });
+            window.StarPlay.wordsAjaxRequest = $.getJSON('words-int.json',
+                          function(data) { window.StarPlay.words = data; });
         </script>
         <script src="underscoreBackbonePlusLocalStorage-min.js"></script>
         <script src="lispy/lispy.js"></script>
         <script src="playground.js"></script>
         <script src="coffee-script.js"></script>
-        <!--[if lte IE 8]><script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+        <!--[if lte IE 8]>
+        <script src="//html5shim.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
     </head>
     <body>
         <canvas id="gameCanvas"></canvas>
-        <p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span>; <span id="error"></span></p>
+        <p>Stats: Turn <span id="turn"></span>, Turtles <span id="turtles"></span
+                       >; <span id="error"></span></p>
         <div id="buttons">
         <button id="restart">Restart</button>
         <button id="pause_resume">Pause/Resume</button>
@@ -28,6 +34,8 @@
             <ul id="turtleFns"></ul>
             <button id="testplus">+</button>
         </div>
-        <p class="onGitHub">(<a target="_blank" href="https://github.com/idupree/Starplay">https://github.com/idupree/Starplay</a>)</p>
+        <p class="onGitHub">(<a target="_blank"
+                                href="https://github.com/idupree/Starplay"
+                                >https://github.com/idupree/Starplay</a>)</p>
     </body>
 </html>

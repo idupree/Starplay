@@ -102,7 +102,8 @@ var mkUnboundVariable = lispy.mkUnboundVariable = function() {
   return { type: types.unboundVariable, string: '#unbound-variable' };
 }
 function mkfn(f) {
-  return { type: types.builtinFunction, value: f, string: ("(#builtin-javascript-"+f+")") };
+  return { type: types.builtinFunction, value: f,
+           string: ("(#builtin-javascript-"+f+")") };
 }
 function mknamedfn(name, f) {
   return { type: types.builtinFunction, value: f, string: ("#builtin:"+name) };
@@ -179,7 +180,8 @@ lispy.mkTopLevelEnv = function(bindings) {
 // This is experimental/untested and may not be suitable;
 // it could be used to allow accesses to undefined variables
 // to automatically define them at top level with some default value.
-lispy.mkTopLevelEnvWithDefault = function(bindings, methodToCallIfVarnameNotFound) {
+lispy.mkTopLevelEnvWithDefault =
+function(bindings, methodToCallIfVarnameNotFound) {
   return {
     bindings: bindings,
     methodToCallIfVarnameNotFound: methodToCallIfVarnameNotFound,
@@ -233,19 +235,22 @@ lispy.mkSubEnvOmitting = function(parentEnv, unbindingsList) {
 // These are convenience functions for use writing builtins.
 function evaluateToNumber(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
-  assert(evaled.type === types.number, lispy.printSexp(sexp) + " is not a number");
+  assert(evaled.type === types.number,
+         lispy.printSexp(sexp) + " is not a number");
   return evaled.value;
 }
 function evaluateToBool(sexp, env) {
   var evaled = lispy.evaluate(sexp, env);
-  assert(evaled.type === types.boolean, lispy.printSexp(sexp) + " is not a boolean");
+  assert(evaled.type === types.boolean,
+         lispy.printSexp(sexp) + " is not a boolean");
   return evaled.value;
 }
 // The required sexp length will be one more than
 // the number of arguments (the function name is also
 // part of the sexp length).
 function arityAssert(sexp, requiredSexpLengthCount) {
-  assert(sexp.length === requiredSexpLengthCount, lispy.printSexp(sexp) + " arg count");
+  assert(sexp.length === requiredSexpLengthCount,
+         lispy.printSexp(sexp) + " arg count");
 }
 function modulo(num, mod) {
   assert(mod > 0, "modulo: non-positive divisor " + mod);
@@ -286,13 +291,15 @@ var builtins = {
     //floating point math?
   'mod': function(sexp, env) {
     arityAssert(sexp, 3);
-    return mknum(modulo(evaluateToNumber(sexp[1], env), evaluateToNumber(sexp[2], env)));
+    return mknum(modulo(evaluateToNumber(sexp[1], env),
+                        evaluateToNumber(sexp[2], env)));
   },
   'negate': function(sexp, env) {
     arityAssert(sexp, 2);
     return mknum(-evaluateToNumber(sexp[1], env));
   },
-  //should and/or use the "return the first/last valid value" thing and have all this implicit boolean convertability?
+  //should "and"/"or" use the "return the first/last valid value" thing and
+  //have all this implicit boolean convertability?
   //These implementations do not evaluate the second argument if the first
   //one shows we don't need to know its value (intentionally) (due to the JS
   //short circuiting behavior here).
@@ -314,16 +321,20 @@ var builtins = {
     arityAssert(sexp, 3);
     var arg1 = lispy.evaluate(sexp[1], env);
     var arg2 = lispy.evaluate(sexp[2], env);
-    assert(isLiteralValueToken(arg1), lispy.printSexp(arg1) + " must be of atomic type to be compared using =");
-    assert(isLiteralValueToken(arg2), lispy.printSexp(arg2) + " must be of atomic type to be compared using =");
+    assert(isLiteralValueToken(arg1),
+      lispy.printSexp(arg1)+" must be of atomic type to be compared using =");
+    assert(isLiteralValueToken(arg2),
+      lispy.printSexp(arg2)+" must be of atomic type to be compared using =");
     return mkbool(arg1.value === arg2.value);
   },
   'not=': function(sexp, env) {
     arityAssert(sexp, 3);
     var arg1 = lispy.evaluate(sexp[1], env);
     var arg2 = lispy.evaluate(sexp[2], env);
-    assert(isLiteralValueToken(arg1), lispy.printSexp(arg1) + " must be of atomic type to be compared using not=");
-    assert(isLiteralValueToken(arg2), lispy.printSexp(arg2) + " must be of atomic type to be compared using not=");
+    assert(isLiteralValueToken(arg1),
+      lispy.printSexp(arg1)+" must be of atomic type to be compared using not=");
+    assert(isLiteralValueToken(arg2),
+      lispy.printSexp(arg2)+" must be of atomic type to be compared using not=");
     return mkbool(arg1.value !== arg2.value);
   },
   // CURRENTLY ONLY ARE A THING FOR NUMBERS:
@@ -451,7 +462,8 @@ function tokenize(str) {
       token({type: types.closeParen}, 1);
     } else if(/^-?\.?[0-9]/.test(str.slice(pos, pos+3))) {
       var numlen = 1;
-      while(pos + numlen < str.length && /[\-0-9a-zA-z_,.]/.test(str[pos + numlen])) {
+      while(pos + numlen < str.length &&
+            /[\-0-9a-zA-z_,.]/.test(str[pos + numlen])) {
         ++numlen;
       }
       // TODO use our own not JS's hex/oct/dec number syntax?
@@ -471,7 +483,8 @@ function tokenize(str) {
       while(pos + idlen < str.length && identifierChar.test(str[pos + idlen])) {
         ++idlen;
       }
-      // are true/false keywords? why? why not immutable globals? why not #t / #f?
+      // are true/false keywords? why? why not immutable globals?
+      // why not #t / #f?
       var idstr = str.slice(pos, pos + idlen);
       if(idstr === 'true') {
         token({type: types.boolean, value: true}, idlen);
@@ -489,7 +502,8 @@ function tokenize(str) {
   return result;
 }
 
-// Returns { parsed: list of sub-lists or tokens, endPos: n } with endPos one-after-end
+// Returns { parsed: list of sub-lists or tokens, endPos: n }
+// with endPos one-after-end
 function parseList(toks, pos, type) {
   var ourNest = [];
   ourNest.type = type;
@@ -507,7 +521,8 @@ function parseList(toks, pos, type) {
       return { parsed: ourNest, endPos: pos };
     } else {
       //TODO maybe different error handling?
-      throw ("parse failure at line " + toks[pos].line + " column " + toks[pos].column);
+      throw ("parse failure at line " + toks[pos].line +
+             " column " + toks[pos].column);
     }
   }
 }
@@ -520,7 +535,8 @@ lispy.parseProgram = function(str) {
 // parseSexp : string -> sexp
 lispy.parseSexp = function(str) {
   var prog = lispy.parseProgram(str);
-  assert(prog.length === 1, "parseSexp: program containing not exactly one sexp");
+  assert(prog.length === 1,
+         "parseSexp: program containing not exactly one sexp");
   return prog[0];
 };
 
@@ -538,12 +554,14 @@ lispy.parseSexp = function(str) {
 // we could just turn all the strings into symbols/atoms (numbers)
 
 
-//This should probably (be used when) eval args first, not duplicate them like that
+//This should probably (be used when) eval args first,
+//not duplicate them like that
 //Or name the args (give them wacky names)
 //beta-reduce depth first deeper first left-to-right
 //ALSO bug beware http://foldoc.org/name+capture
 //if args are not in NORMAL FORM with all their non bound vars
-//already substituted (locally non bound ones; & globally non bound ones as errors or undef)
+//already substituted (locally non bound ones; & globally
+//non bound ones as errors or undef)
 // http://foldoc.org/Weak+Head+Normal+Form
 // http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
 // http://en.wikipedia.org/wiki/Beta_normal_form
@@ -576,7 +594,8 @@ lispy.betaReduceO_N = function(sexp) {
   body.type = types.imperative;
 
   var substitutions = {};
-  assert(params.length === args.length, lispy.printSexp(sexp) + " equal params length"); //no silly stuff!
+  assert(params.length === args.length,
+    lispy.printSexp(sexp) + " equal params length"); //no silly stuff!
   for(var i = 0; i !== params.length; ++i) {
     assert(params[i].type === types.identifier, "params are identifiers");
     substitutions[params[i].string] = args[i];
@@ -612,8 +631,10 @@ lispy.rep = lispy.readEvalPrint = function(str) {
 };
 
 // lispy.rep("((fn (x) (x x)) (fn (x) (x x)))")
-// lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y (x y)) (fn (x) x) 34)")))
-// lispy.printSexp(lispy.evaluate(lispy.parseProgram("((fn (x y) y) 23 34)")[0]))
+// lispy.printSexp(lispy.evaluate(lispy.parseProgram(
+//   "((fn (x y) y (x y)) (fn (x) x) 34)")))
+// lispy.printSexp(lispy.evaluate(lispy.parseProgram(
+//   "((fn (x y) y) 23 34)")[0]))
 
 //TODO fix desc: env is an environment (see section Environments).
 //It is used to look up free variables.
@@ -635,13 +656,15 @@ lispy.evaluate = function(sexp, env) {
   }
   while(true) {
     var lookedup;
-    if(sexp.type === types.identifier && (lookedup = env.lookup(sexp.string))) {
+    if(sexp.type === types.identifier &&
+       (lookedup = env.lookup(sexp.string))) {
       // substitute plain identifiers from env:
       //   ident
       sexp = lookedup;
     }
     else if(sexp.type === types.list && sexp.length >= 1 &&
-        sexp[0].type === types.identifier && (lookedup = env.lookup(sexp[0].string))) {
+        sexp[0].type === types.identifier &&
+	(lookedup = env.lookup(sexp[0].string))) {
       // substitute function names that are about to be called from env:
       //   (ident ...)
       var headEvaledSexp = shallowCopyArray(sexp);
@@ -734,14 +757,17 @@ lispy.strictBetaReduceO_N = function(sexp, env) {
     { type: types.number, value: 7, string: "7", ... }
   ])
 
-wait, does it mutate or return a new sexp? return a new sexp. there might be sharing
-of some tokens - we intend that they are never mutated by any code
+wait, does it mutate or return a new sexp?
+return a new sexp. there might be sharing
+of some tokens - we intend that they are never
+mutated by any code
 
 TODO can 'fn' be bound? that is not guarded against.
 */
 lispy.substitute = function(sexp, env) {
   var lookuped;
-  if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
+  if(sexp.type === types.list || sexp.type === types.program ||
+                                 sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
       var bindings = _.pluck(sexp[1], 'string');
       var subEnv = lispy.mkSubEnvOmitting(env, bindings);
@@ -755,7 +781,8 @@ lispy.substitute = function(sexp, env) {
       }));
     }
   }
-  else if(sexp.type === types.identifier && (lookuped = env.lookup(sexp.string))) {
+  else if(sexp.type === types.identifier &&
+          (lookuped = env.lookup(sexp.string))) {
     return lookuped;
   }
   else { //other token
@@ -768,7 +795,8 @@ lispy.substitute = function(sexp, env) {
 lispy.freeVarsIn = function(sexp, boundVars) {
   if(boundVars === undefined) { boundVars = {}; }
   var freeVars = {};
-  if(sexp.type === types.list || sexp.type === types.program || sexp.type === types.imperative) {
+  if(sexp.type === types.list || sexp.type === types.program ||
+                                 sexp.type === types.imperative) {
     if(lispy.isLambdaLiteral(sexp)) {
       var bindings = _.clone(boundVars);
       _.each(_.pluck(sexp[1], 'string'), function(v) { bindings[v] = true; });
@@ -812,7 +840,8 @@ lispy.bindFreeVars = function(sexp, env) {
     return sexp;
   }
   else {
-    //TODO implement 'let' as syntactic sugar for such immediately-applied-function
+    //TODO implement 'let' as syntactic sugar for
+    //such immediately-applied-function
     var paramsSexp = varsToBind;
     paramsSexp.type = types.list;
     var lambdaSexp = [mkidentifier('fn'), paramsSexp, sexp];
