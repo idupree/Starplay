@@ -502,8 +502,10 @@ $ ->
         {color: patchcolor, grass:0}
     """, '-> true', true
   
-  window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click(
-                                             -> thisPageTurtleFnList.create())
-  window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
+  #window.StarPlay.wordsAjaxRequest.done -> $('#testplus').click(
+  #                                           -> thisPageTurtleFnList.create())
+  #window.StarPlay.wordsAjaxRequest.fail -> $('#testplus').hide()
+  $('#testplus').click(-> thisPageTurtleFnList.create())
+
   runInitScript()
   startRunning()

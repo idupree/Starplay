@@ -1,4 +1,5 @@
-[
+window.StarPlay = (window.StarPlay || {});
+window.StarPlay.words = [
 "aardvark",
 "aardvarks",
 "abaci",
