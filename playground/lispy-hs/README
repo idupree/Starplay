@@ -19,13 +19,35 @@ get these by installing the Haskell Platform then running
 
 Evaluates the Lispy expression in the passed file (defaulting to test.scm).
 
-This prototype written in Haskell is just an interpreter; it has no game elements.  Running it interprets the contents of `test.scm' as an expression, evaluates it, and (if its evaluation did not exceed the number of computation steps Lispy.hs allows) prints the result.
+This prototype written in Haskell is just an interpreter; it has no game
+elements.  Running it interprets the contents of `test.scm' as an expression,
+evaluates it, and (if its evaluation did not exceed the number of computation
+steps Lispy.hs allows) prints the result.
 
-The syntax resembles Scheme.  The built-in operators are `lambda', `if', `letrec', `begin', and all the functions and constants listed in Lispy.Types.builtinNames (in Lispy/Types.hs).  Unlike Scheme, functions have a fixed number of arguments (`+' takes exactly two arguments, no more).  Like Scheme and Lua, `or' and `and' return their first or second argument.  Every value is truthy except for `nil'. `(not nil)' is `true'.  `(if condition then else)' requires both a then and an else branch.  `letrec' is local variable binding; it allows recursion and is as powerful as Scheme's `let$*$' and `letrec' combined.
+The syntax resembles Scheme.  The built-in operators are `lambda', `if',
+`letrec', `begin', and all the functions and constants listed in
+Lispy.Types.builtinNames (in Lispy/Types.hs).  Unlike Scheme, functions
+have a fixed number of arguments (`+' takes exactly two arguments, no more).
+Like Scheme and Lua, `or' and `and' return their first or second argument.
+Every value is truthy except for `nil'.  `(not nil)' is `true'.
+`(if condition then else)' requires both a then and an else branch.
+`letrec' is local variable binding; it allows recursion and is as powerful
+as Scheme's `let$*$' and `letrec' combined.
 
-The table builtins are inspired by Lua.  In Lua, there is a single composite data type called the `table'.  It is an associative array implemented by (more or less) a hash table.  Sequences are represented by a table with keys 1, 2, 3 ... n.
+The table builtins are inspired by Lua.  In Lua, there is a single composite
+data type called the `table'.  It is an associative array implemented by
+(more or less) a hash table.  Sequences are represented by a table with
+keys 1, 2, 3 ... n.
 
-In this prototype, tables are purely-functional, key-ordered associative containers.  They are implemented as self-balancing binary search trees.  Tables-as-sequences start at 0 by default rather than 1, though it doesn't make a difference: sequence iteration uses the keys' ordering and ignores actual key values unless you look at them.
+In this prototype, tables are purely-functional, key-ordered associative
+containers.  They are implemented as self-balancing binary search trees.
+Tables-as-sequences start at 0 by default rather than 1, though it doesn't
+make a difference: sequence iteration uses the keys' ordering and ignores
+actual key values unless you look at them.
 
-Using names like `lambda' and `letrec' is unsuitable for a friendly robot language, but renaming them will be trivial.  Even switching the concrete syntax is relatively trivial: I deliberately avoided Lisp-specific language concepts such as macros.  For prototyping, I'm sticking with programming-language-theory names and trivial Lisp-like syntax.
+Using names like `lambda' and `letrec' is unsuitable for a friendly robot
+language, but renaming them will be trivial.  Even switching the concrete
+syntax is relatively trivial: I deliberately avoided Lisp-specific language
+concepts such as macros.  For prototyping, I'm sticking with
+programming-language-theory names and trivial Lisp-like syntax.
 
