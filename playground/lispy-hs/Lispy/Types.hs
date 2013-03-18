@@ -166,9 +166,11 @@ builtinTextToData = Map.fromList builtinNames
 builtinDataToText :: Map Builtin Text
 builtinDataToText = Map.fromList (fmap (\(x,y)->(y,x)) builtinNames)
 builtinTextToVarIdx :: Map Text VarIdx
-builtinTextToVarIdx = fmap (builtinDataToVarIdx Map.!) (Map.fromList builtinNames)
+builtinTextToVarIdx = fmap (builtinDataToVarIdx Map.!)
+                           (Map.fromList builtinNames)
 builtinVarIdxToText :: Map VarIdx Text
-builtinVarIdxToText = Map.fromList (fmap (\(x,y)->(y,x)) (Map.toList builtinTextToVarIdx))
+builtinVarIdxToText = Map.fromList (fmap (\(x,y)->(y,x))
+                                         (Map.toList builtinTextToVarIdx))
 
 
 builtinsComputedValues :: StackFrameComputedValues

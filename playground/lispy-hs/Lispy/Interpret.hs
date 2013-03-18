@@ -171,7 +171,8 @@ call resultElseTail func args state = let
       callBuiltinFunction resultElseTail bf args state
     _ -> error "runtime error: calling a non-function"
 
-callBuiltinFunction :: Maybe VarIdx -> Builtin -> Vector VarIdx -> LispyState -> LispyState
+callBuiltinFunction :: Maybe VarIdx -> Builtin -> Vector VarIdx
+                    -> LispyState -> LispyState
 callBuiltinFunction resultElseTail bf args state = case bf of
   _ -> let
     computedValues = (lsfComputedValues (lsFrame (lsStack state)))

@@ -81,7 +81,8 @@ showsASTConciseSummary ast = case ast of
       if Vector.length members > 1 then showString "…)" else showChar ')'
     Nothing -> showString "()"
 
-showsBytecodeInstruction :: Vector (Located AST) -> Int -> BytecodeInstruction -> ShowS
+showsBytecodeInstruction :: Vector (Located AST) -> Int -> BytecodeInstruction
+                         -> ShowS
 showsBytecodeInstruction astsByIdx bytecodeIdx bytecode = let
     var = showsVarIdx astsByIdx
     relDest dest = showChar '+' . shows dest . showChar '(' .

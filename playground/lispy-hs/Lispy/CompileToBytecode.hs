@@ -148,7 +148,8 @@ compile' scope (L _ ast) = let
         _ -> error letrecSyntaxMsg
       ASTIdentifier _ "lambda" -> case args of
         [L _ (ASTList _ paramsAST), body] -> let
-          params = fmap (\(L _ (ASTIdentifier idx varname)) -> (varname, idx)) paramsAST
+          params = fmap (\(L _ (ASTIdentifier idx varname)) -> (varname, idx))
+                        paramsAST
           bindingEnv = Map.fromList (Vector.toList params)
           bodyScope = scope {
             compileScopeEnv = (Map.union bindingEnv (compileScopeEnv scope)),

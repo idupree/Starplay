@@ -35,7 +35,8 @@ import Lispy.Types
 -- but then we need to parse UTF-8 chars with parsec.
 data LocText = LocText {-#UNPACK#-}!Int !Text
 instance (Monad m) => P.Stream LocText m Char where
-  uncons (LocText loc text) = return (fmap (fmap (LocText (loc+1))) (Text.uncons text))
+  uncons (LocText loc text) = return (fmap (fmap (LocText (loc+1)))
+                                           (Text.uncons text))
   {-# INLINE uncons #-}
 
 type LispyParser = P.Parsec LocText ASTIdx
