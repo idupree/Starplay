@@ -382,16 +382,16 @@ class TurtleFnView extends Backbone.View
     <li
       ><div class="turtle-fn-menu"
         ><img alt="turtle" tabindex="0" class="turtle-fn-type"
-              src="turtle23x23.png" width="23" height="23"
+              src="imgs/turtle23x23.png" width="23" height="23"
         /><div
           ><a href="javascript:;" class="fn-become-turtle" title="turtle rule"
-            ><img alt="be turtle" src="turtle23x23.png" width="23" height="23" /></a
+            ><img alt="be turtle" src="imgs/turtle23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-become-patch" title="patch rule"
-            ><img alt="be patch" src="patch23x23.png" width="23" height="23" /></a
+            ><img alt="be patch" src="imgs/patch23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-become-world" title="world rule"
-            ><img alt="be world" src="world23x23.png" width="23" height="23" /></a
+            ><img alt="be world" src="imgs/world23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-become-init" title="initialization rule"
-            ><img alt="be init" src="init23x23.png" width="23" height="23" /></a
+            ><img alt="be init" src="imgs/init23x23.png" width="23" height="23" /></a
           ><a href="javascript:;" class="fn-delete"
             >Delete</a
         ></div
@@ -429,7 +429,7 @@ class TurtleFnView extends Backbone.View
   reactivate: -> @model.set 'activation', @$('.turtle-fn-activation').text()
   renderType: ->
       type = if @model.get 'isInit' then 'init' else @model.get 'type'
-      @$('.turtle-fn-type').attr('alt': type, 'src': type+'23x23.png')
+      @$('.turtle-fn-type').attr('alt': type, 'src': "imgs/"+type+"23x23.png")
   renderError: ->
       @$('.error').text (@model.get('error') || '')
       @$el.toggleClass 'hasError', (@model.get 'error')?
