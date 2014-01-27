@@ -478,7 +478,7 @@ $ ->
       implementation: implementation
       activation: activation
       isInit: isInit
-  newFn 'turtle', 'speed', '(@ forward (- 5 4))', '(= (@ type) "zoomer")'
+  newFn 'turtle', 'speed', "-> @forward 1", "-> @type == 'zoomer'"
   newFn 'turtle', 'spawn', "-> @clone type: 'zoomer', color: 'red'",
                                  "-> @type == 'mommy' and sim.time % 8 == 0"
   newFn 'turtle', 'wobble', """
