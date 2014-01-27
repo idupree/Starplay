@@ -1,5 +1,5 @@
 To compile, run ./build
-Then point your browser at playground.html to run it.
+Then point your browser at index.html to run it.
 
 There is also a prototype in the subdirectory 'lispy-hs' whose code
 is completely unrelated to this HTML prototype.

@@ -16,7 +16,7 @@ do things if they want to).
 The world wraps on the side and top/bottom (it's a torus).
 
 The code I'm writing and playing with is in
-    playground/playground.{html,coffee}
+`playground/index.html` and `playground/playground.coffee`.
 
 This runs completely in-browser; presently you program it in
 CoffeeScript.  There's an example starting script already visible
