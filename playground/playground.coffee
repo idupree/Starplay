@@ -478,14 +478,14 @@ $ ->
       implementation: implementation
       activation: activation
       isInit: isInit
-  newFn 'turtle', 'speed', '(@ forward (- 5 4))', '(= (@ type) "bullet")'
-  newFn 'turtle', 'activateGun', "-> @clone type: 'bullet', color: 'red'",
-                                 "-> @type == 'crazy' and sim.time % 8 == 0"
+  newFn 'turtle', 'speed', '(@ forward (- 5 4))', '(= (@ type) "zoomer")'
+  newFn 'turtle', 'spawn', "-> @clone type: 'zoomer', color: 'red'",
+                                 "-> @type == 'mommy' and sim.time % 8 == 0"
   newFn 'turtle', 'wobble', """
     ->
       @rotateLeft tau / 16 * (Math.random() - 0.5)
       @forward 0.25""",
-    """-> @type == 'crazy'"""
+    """-> @type == 'mommy'"""
   #newFn 'turtle', 'patchHere',
   #         "-> sim.patches[Math.floor(@x)][Math.floor(@y)]", '-> false'
   newFn 'turtle', 'layGrass', "-> @patchHere().grass += 5", "-> true"
@@ -497,7 +497,7 @@ $ ->
   newFn 'world', 'setup', """
     ->
       sim.turtles = [sim.newTurtle(
-        {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'crazy'})]
+        {x:5, y:5, color:'rgb(88,88,88)', heading:0, type:'mommy'})]
       patchcolor = ->
         'rgb(127,'+(Math.floor Math.min 30*@grass, 255)+',127)'
       sim.setAllPatches (x,y) ->
