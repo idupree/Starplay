@@ -12,3 +12,6 @@ coffee --compile playground.coffee
 
 cat jquery-1.10.2.min.js underscore-min.js backbone-min.js backbone.variable.js lispy/lispy.js playground.js coffee-script.js > concatenated-scripts.js
 
+# The files to run it are now
+# index.html imgs/ concatenated-scripts.js words-int.js playground.css playground.css.map words-copyright-notices-en.txt
+
