@@ -10,5 +10,5 @@ fi
 # http://coffeescript.org/
 coffee --compile playground.coffee
 
-cat jquery-1.10.2.min.js underscore-min.js backbone-min.js backbone.localStorage-min.js lispy/lispy.js playground.js coffee-script.js > concatenated-scripts.js
+cat jquery-1.10.2.min.js underscore-min.js backbone-min.js backbone.variable.js lispy/lispy.js playground.js coffee-script.js > concatenated-scripts.js
 
