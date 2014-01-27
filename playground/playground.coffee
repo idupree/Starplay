@@ -4,6 +4,8 @@
 # This file implements a simulation inspired by StarLogo
 # customizable in CoffeeScript and/or a custom Lisp-inspired language.
 
+window.StarPlay ?= {}
+
 # Utility
 
 tau = 6.28318530717958647692528676655900576839433879875021

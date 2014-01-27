@@ -1,10 +1,4 @@
-To compile:
-
-coffee --compile playground.coffee
-sass playground.scss playground.css
-
-( coffee: http://coffeescript.org/ , sass: http://sass-lang.com/ )
-
+To compile, run ./build
 Then point your browser at playground.html to run it.
 
 It only requires cookies/localStorage to be enabled because I shamefully
