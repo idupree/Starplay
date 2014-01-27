@@ -1,10 +1,6 @@
 To compile, run ./build
 Then point your browser at playground.html to run it.
 
-It only requires cookies/localStorage to be enabled because I shamefully
-used the existing backbone.localStorage library rather than writing a
-backbone.js backend that uses regular JavaScript values for storage.
-
 There is also a prototype in the subdirectory 'lispy-hs' whose code
 is completely unrelated to this HTML prototype.
 
