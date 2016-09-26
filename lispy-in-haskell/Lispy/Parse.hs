@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
 
 -- | This module parses S-expressions.  Just about the only semantic
 -- interpretation it does is turning literal numbers into numeric
